@@ -31,6 +31,18 @@ create index if not exists votes_voter_idx on votes (voter_hash, created_at);
 alter table votes enable row level security;
 revoke all on table votes from anon, authenticated;
 
+-- Per-art Elo ledger (K=32, start 1500), updated on every vote.
+create table if not exists arts (
+  illustration_id uuid primary key,
+  card_name text not null,
+  artist text, set_name text, art_url text,
+  wins int not null default 0,
+  losses int not null default 0,
+  elo double precision not null default 1500
+);
+alter table arts enable row level security;
+revoke all on table arts from anon, authenticated;
+
 -- Random per-project salt for IP hashing, generated once at install.
 create table if not exists app_secrets (salt text not null);
 insert into app_secrets (salt)
@@ -61,6 +73,7 @@ declare
   wid uuid; lid uuid;
   agree int; disagree int; card_total int;
   hdrs jsonb; ip text; vhash text;
+  w_elo double precision; l_elo double precision; delta double precision;
 begin
   if p_format not in ('standard','pioneer','modern','legacy','vintage','commander')
      and p_format !~ '^set:[a-z0-9]{2,6}$' then
@@ -112,6 +125,19 @@ begin
           left(p_loser->>'artist', 120), left(p_loser->>'set_name', 120),
           left(p_loser->>'art', 300), vhash, auth.uid());
 
+  -- Elo update (metadata comes from the same validated payload as the vote)
+  insert into arts (illustration_id, card_name, artist, set_name, art_url) values
+    (wid, p_card, left(p_winner->>'artist', 120), left(p_winner->>'set_name', 120),
+     left(p_winner->>'art', 300)),
+    (lid, p_card, left(p_loser->>'artist', 120), left(p_loser->>'set_name', 120),
+     left(p_loser->>'art', 300))
+  on conflict (illustration_id) do nothing;
+  select elo into w_elo from arts where illustration_id = wid;
+  select elo into l_elo from arts where illustration_id = lid;
+  delta := 32.0 * (1.0 - 1.0 / (1.0 + power(10, (l_elo - w_elo) / 400.0)));
+  update arts set wins = wins + 1, elo = elo + delta where illustration_id = wid;
+  update arts set losses = losses + 1, elo = elo - delta where illustration_id = lid;
+
   select count(*) into agree
     from votes where card_name = p_card and winner_id = wid and loser_id = lid;
   select count(*) into disagree
@@ -127,6 +153,27 @@ begin
     'card_votes', card_total);
 end
 $$;
+
+-- One-time Elo backfill: replay pre-existing votes in order. Skipped whenever
+-- the arts table already has rows, so re-running the schema never
+-- double-applies.
+do $$
+declare
+  v record; w_elo double precision; l_elo double precision; d double precision;
+begin
+  if exists (select 1 from arts) then return; end if;
+  for v in select * from votes order by id loop
+    insert into arts (illustration_id, card_name, artist, set_name, art_url) values
+      (v.winner_id, v.card_name, v.winner_artist, v.winner_set, v.winner_art),
+      (v.loser_id, v.card_name, v.loser_artist, v.loser_set, v.loser_art)
+    on conflict (illustration_id) do nothing;
+    select elo into w_elo from arts where illustration_id = v.winner_id;
+    select elo into l_elo from arts where illustration_id = v.loser_id;
+    d := 32.0 * (1.0 - 1.0 / (1.0 + power(10, (l_elo - w_elo) / 400.0)));
+    update arts set wins = wins + 1, elo = elo + d where illustration_id = v.winner_id;
+    update arts set losses = losses + 1, elo = elo - d where illustration_id = v.loser_id;
+  end loop;
+end $$;
 
 -- signature changed when p_mine was added; drop the old overload so RPC
 -- name resolution stays unambiguous
@@ -158,8 +205,11 @@ per_art as (
   from sides group by id
 ),
 ranked as (
-  select *, round(100.0 * wins / games)::int win_rate, wilson_lb(wins, games) score
-  from per_art
+  select p.*, round(100.0 * p.wins / p.games)::int win_rate,
+         wilson_lb(p.wins, p.games) score,
+         round(coalesce(a.elo, 1500))::int elo
+  from per_art p
+  left join arts a on a.illustration_id = p.id
 ),
 pairs as (
   select card_name,
@@ -190,7 +240,8 @@ select jsonb_build_object(
                            from (select format, count(*)::int c from v group by format) f),
                           '{}'::jsonb)),
   'top_arts', coalesce((select jsonb_agg(to_jsonb(t))
-    from (select id, card_name, artist, set_name, art, wins, losses, games, win_rate
+    from (select id, card_name, artist, set_name, art, wins, losses, games,
+                 win_rate, elo
           from ranked
           where games >= (select m from mg)
           order by wilson_lb(wins, games) desc, games desc

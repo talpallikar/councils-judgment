@@ -178,6 +178,9 @@ test("localStats: totals, ranking and pair aggregation", async () => {
   assert.deepEqual(s.totals.by_format, { modern: 4 });
   assert.equal(s.top_arts[0].id, "a2");        // 3-1 beats 1-3
   assert.equal(s.top_arts[0].win_rate, 75);
+  assert.ok(s.top_arts[0].elo > 1500, "winner's Elo should rise above 1500");
+  const loserArt = s.top_arts.find(e => e.id === "b2");
+  if (loserArt) assert.ok(loserArt.elo < 1500, "loser's Elo should fall");
   const pair = s.closest[0];
   assert.equal(pair.n, 4);
   assert.equal(pair.a.votes + pair.b.votes, 4);

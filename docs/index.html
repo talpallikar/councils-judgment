@@ -475,6 +475,19 @@ async function recordVote(m, winner, loser) {
   };
 }
 
+// Elo is global (like the server's): replay every vote in order regardless
+// of the stats filter.
+function localElo() {
+  const elo = new Map();
+  for (const v of localVotes()) {
+    const we = elo.get(v.w.id) ?? 1500, le = elo.get(v.l.id) ?? 1500;
+    const delta = 32 * (1 - 1 / (1 + 10 ** ((le - we) / 400)));
+    elo.set(v.w.id, we + delta);
+    elo.set(v.l.id, le - delta);
+  }
+  return elo;
+}
+
 function localStats(fmt) {
   const votes = localVotes().filter(v => fmt === "all" || v.f === fmt);
   const total = votes.length;
@@ -499,10 +512,12 @@ function localStats(fmt) {
     if (v.w.id === a) p.na++; else p.nb++;
     pairs.set(key, p);
   }
+  const eloMap = localElo();
   const ranked = [...perArt.values()].map(e => ({
     ...e, games: e.wins + e.losses,
     win_rate: Math.round(100 * e.wins / (e.wins + e.losses)),
     score: wilson(e.wins, e.wins + e.losses),
+    elo: Math.round(eloMap.get(e.id) ?? 1500),
   }));
   const pairRows = [...pairs.values()]
     .map(p => ({ ...p, n: p.na + p.nb }))
@@ -889,7 +904,7 @@ const artRow = (e, i) => `
       <div class="subtitle">${esc(e.artist || "")} &middot; ${esc(e.set_name || "")}</div>
     </div>
     <div class="metric">
-      <div class="lbl"><span>${e.win_rate}% wins</span><span>${e.wins}&ndash;${e.losses}</span></div>
+      <div class="lbl"><span>${e.win_rate}% wins</span><span>${e.wins}&ndash;${e.losses} &middot; Elo ${e.elo}</span></div>
       <div class="bar"><i style="width:${e.win_rate}%"></i></div>
     </div>
   </div>`;
