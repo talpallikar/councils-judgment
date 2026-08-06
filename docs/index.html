@@ -519,8 +519,11 @@ async function recordVote(m, winner, loser) {
   const wCard = cross ? winner.card : m.card;
   const lCard = cross ? loser.card : null;
   if (REMOTE) {
-    return rpc("record_vote", { p_format: m.format, p_card: wCard,
-                                p_winner: w, p_loser: l, p_loser_card: lCard });
+    // omit p_loser_card when null so same-card votes still match a database
+    // running the pre-cross-mode function signature
+    const args = { p_format: m.format, p_card: wCard, p_winner: w, p_loser: l };
+    if (lCard) args.p_loser_card = lCard;
+    return rpc("record_vote", args);
   }
   const votes = localVotes();
   votes.push({ f: m.format, c: wCard, lc: lCard, w, l, t: Date.now() });
