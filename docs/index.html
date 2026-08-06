@@ -156,7 +156,8 @@
   .option.picked .bar > i { background: var(--gold); }
   .duel-actions { display: flex; justify-content: center; align-items: center; gap: 18px; margin-top: 22px; min-height: 40px; }
   .duel-actions .ghost { background: none; border: none; color: var(--muted); font-size: 13px; }
-  .duel-actions .ghost:hover { color: var(--ink-2); }
+  .duel-actions .ghost:hover:not(:disabled) { color: var(--ink-2); }
+  .duel-actions .ghost:disabled { opacity: 0.4; cursor: default; }
   .next-btn {
     background: var(--gold); color: #1a1505; border: none; border-radius: 8px;
     padding: 9px 26px; font-weight: 600; font-size: 14px;
@@ -851,6 +852,26 @@ async function newMatchup() {
 }
 
 
+// Redraw the art pairing for the current card (needs a 3rd art to differ).
+async function reArts() {
+  const m = state.matchup;
+  if (!m || m.total_arts < 3) return;
+  const prints = await getPrints(m.card);   // served from cache
+  if (prints.length < 3) return;
+  const cur = new Set(m.arts.map(a => a.id));
+  for (let tries = 0; tries < 20; tries++) {
+    const i = Math.floor(Math.random() * prints.length);
+    let j = Math.floor(Math.random() * (prints.length - 1));
+    if (j >= i) j++;
+    const pair = [prints[i], prints[j]];
+    if (pair.every(a => cur.has(a.id))) continue;   // same pairing; redraw
+    pair.forEach(a => { const img = new Image(); img.src = a.art; });
+    renderDuel({ format: m.format, card: m.card,
+                 total_arts: prints.length, arts: pair });
+    return;
+  }
+}
+
 async function startDuel() {
   show("duel");
   const root = $("#view-duel");
@@ -891,10 +912,13 @@ function renderDuel(m) {
     </div>
     <div class="agree-note" id="agree-note"></div>
     <div class="duel-actions" id="duel-actions">
+      <button class="ghost" id="rearts-btn" ${m.total_arts < 3 ? "disabled" : ""}
+        title="${m.total_arts < 3 ? "This card only has these two arts" : "Draw a different pair of arts for this card"}">Different arts</button>
       <button class="ghost" id="skip-btn">Skip this card</button>
       <button class="ghost" id="change-btn">Change pool</button>
     </div>
     <div class="kbd-hint"><kbd>&larr;</kbd> <kbd>&rarr;</kbd> to vote &middot; <kbd>S</kbd> skip &middot; <kbd>Enter</kbd> next</div>`;
+  $("#rearts-btn").onclick = () => reArts();
   $("#skip-btn").onclick = () => startDuel();
   $("#change-btn").onclick = () => show("home");
   root.querySelectorAll(".option .art-btn").forEach((btn, i) => {
