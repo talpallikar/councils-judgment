@@ -22,7 +22,10 @@ create table if not exists votes (
   user_id uuid,      -- set when the voter is signed in (optional accounts)
   created_at timestamptz not null default now()
 );
--- idempotent upgrade for databases created before optional accounts existed
+-- Idempotent upgrades: "create table if not exists" cannot add columns to a
+-- table made by an earlier schema version, so every late-added column gets
+-- an alter here, before anything references it.
+alter table votes add column if not exists voter_hash text;
 alter table votes add column if not exists user_id uuid;
 create index if not exists votes_card_idx on votes (card_name);
 create index if not exists votes_format_idx on votes (format);
