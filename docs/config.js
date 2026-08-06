@@ -4,6 +4,6 @@
 // two validated functions (record_vote / get_stats), enforced by RLS.
 // Leave both empty to run in solo mode (votes stay in this browser).
 window.MTGART_CONFIG = {
-  supabaseUrl: "",      // e.g. "https://abcdefgh.supabase.co"
-  supabaseAnonKey: "",  // Project Settings -> API -> anon public key
+  supabaseUrl: "https://waoxivmmejugdupednsl.supabase.co",
+  supabaseAnonKey: "sb_publishable_FIjrPZJNOzDVbBhqFwrvUg_SNg895Hm",
 };
