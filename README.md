@@ -27,7 +27,14 @@ from the browser) with **Supabase** (free tier) as the shared vote store and a
    Branch `main`, folder `/docs`.
 3. **Create a free Supabase project** at [supabase.com](https://supabase.com),
    then open its *SQL Editor*, paste all of `supabase/schema.sql`, and run it.
-   The file is idempotent — re-run it after pulling schema changes.
+   The file is idempotent — re-running it over any earlier version is safe,
+   and that property is a **contract**: new columns on existing tables need
+   `alter table ... add column if not exists`, and one-shot blocks (like the
+   Elo backfill) must guard against double-apply.
+   *Optional but recommended:* add a repo secret `SUPABASE_DB_URL` (the
+   dashboard's **Session pooler** connection string) and the
+   *Deploy database schema* workflow applies schema changes automatically on
+   every push — no more SQL-editor pasting.
 4. **Wire the frontend**: put your project's URL and anon key (Project
    Settings → API) into `docs/config.js`, commit, push.
 5. **For sign-in links** (optional accounts): in Supabase, set

@@ -1,0 +1,35 @@
+name: Deploy database schema
+
+# Applies supabase/schema.sql to the live database whenever it changes on
+# main. The schema file is idempotent by contract (see README), so the whole
+# file is applied every time — no migration bookkeeping.
+#
+# Requires one repository secret:
+#   SUPABASE_DB_URL — the "Session pooler" connection string from the
+#   Supabase dashboard (Connect -> Session pooler), including the password.
+#   (The pooler URI is required: GitHub runners have no IPv6, and direct
+#   database hosts are IPv6-only.)
+
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/schema.sql"]
+  workflow_dispatch: {}
+
+concurrency: deploy-schema
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply schema
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL secret is not set (repo Settings -> Secrets -> Actions)"
+            exit 1
+          fi
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/schema.sql
+          echo "Schema applied."
