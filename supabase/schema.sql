@@ -78,7 +78,7 @@ declare
   hdrs jsonb; ip text; vhash text;
   w_elo double precision; l_elo double precision; delta double precision;
 begin
-  if p_format not in ('standard','pioneer','modern','legacy','vintage','commander')
+  if p_format not in ('standard','pioneer','modern','legacy','vintage','commander','any')
      and p_format !~ '^set:[a-z0-9]{2,6}$' then
     raise exception 'unknown format';
   end if;
@@ -282,7 +282,23 @@ select jsonb_build_object(
   'most_voted', coalesce((select jsonb_agg(to_jsonb(t))
     from (select card_name, count(*)::int votes
           from v group by card_name
-          order by votes desc limit 10) t), '[]'::jsonb)
+          order by votes desc limit 10) t), '[]'::jsonb),
+  -- How often the signed-in caller's picks match the community majority on
+  -- the pairings they voted on (their own vote excluded). Null when anonymous.
+  'alignment', (case when auth.uid() is null then null else (
+    select jsonb_build_object(
+      'scored', count(*) filter (where w_n <> a_n)::int,
+      'agreed', count(*) filter (where w_n > a_n)::int)
+    from (
+      select
+        (select count(*) from votes o
+         where o.card_name = uv.card_name and o.winner_id = uv.winner_id
+           and o.loser_id = uv.loser_id and o.id <> uv.id) w_n,
+        (select count(*) from votes o
+         where o.card_name = uv.card_name and o.winner_id = uv.loser_id
+           and o.loser_id = uv.winner_id) a_n
+      from votes uv where uv.user_id = auth.uid()) t
+  ) end)
 )
 $$;
 

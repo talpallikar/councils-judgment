@@ -6,11 +6,15 @@ art leaderboard, closest rivalries, biggest blowouts, top artists). Named
 after the card whose whole mechanic is everyone voting and the winner
 resolving.
 
-Card pools come from a **format** (its most-played staples, refreshed weekly)
-or from a **single set** (its cards, with arts drawn from every printing they
-ever had). Recently shown cards are tracked per pool so the whole pool cycles
-before anything repeats. **Optional accounts** (email magic link via Supabase
-Auth) tie votes to a user, unlocking a personal "my votes" view in stats.
+Card pools come from a **format** (up to its top 500 most-played cards,
+refreshed weekly), a **single set** (picked from an icon grid; cards judged
+across every printing they ever had), or **all cards** (random draws from the
+entire multiverse via Scryfall). The header pool pill switches pools
+mid-session. Recently shown cards are tracked per pool so the whole pool
+cycles before anything repeats. **Optional accounts** (email magic link via
+Supabase Auth) tie votes to a user, unlocking a personal "my votes" view and
+a **council alignment** score — how often your picks match the community
+majority (also tracked per-browser for anonymous voters).
 
 Hosted entirely on **GitHub Pages** (static frontend, Scryfall called directly
 from the browser) with **Supabase** (free tier) as the shared vote store and a

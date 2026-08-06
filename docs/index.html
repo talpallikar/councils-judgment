@@ -44,7 +44,22 @@
   .fmt-pill {
     font-size: 13px; color: var(--ink-2); background: var(--surface);
     border: 1px solid var(--hair); border-radius: 999px; padding: 4px 12px;
+    cursor: pointer;
   }
+  .fmt-pill:hover { border-color: var(--gold); color: var(--ink); }
+  .fmt-pill::after { content: " ▾"; color: var(--muted); }
+  .pool-menu {
+    position: absolute; top: 52px; z-index: 30;
+    background: var(--surface); border: 1px solid var(--hair); border-radius: 10px;
+    padding: 6px; min-width: 180px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  }
+  .pool-menu button {
+    display: block; width: 100%; text-align: left; background: none; border: none;
+    color: var(--ink-2); font-size: 13.5px; padding: 7px 10px; border-radius: 6px;
+  }
+  .pool-menu button:hover { background: var(--grid); color: var(--ink); }
+  .pool-menu button.current { color: var(--gold); }
+  .pool-menu hr { border: none; border-top: 1px solid var(--grid); margin: 5px 4px; }
   .banner {
     background: #2a2410; color: #e8d9a0; border-bottom: 1px solid #4a3f1d;
     font-size: 12.5px; padding: 7px 24px; text-align: center;
@@ -74,11 +89,25 @@
   .fmt-tile .name { font-family: var(--serif); font-size: 20px; }
   .fmt-tile .meta { color: var(--muted); font-size: 12px; margin-top: 6px; }
   .fmt-tile .samples { color: var(--ink-2); font-size: 12px; margin-top: 8px; line-height: 1.45; }
-  .set-pick { display: flex; justify-content: center; margin-top: 16px; }
-  .set-pick select {
+  .set-pick { margin-top: 16px; }
+  .set-pick input {
+    display: block; margin: 0 auto; width: min(100%, 340px);
     background: var(--surface); color: var(--ink); border: 1px solid var(--hair);
-    border-radius: 8px; padding: 9px 12px; font: inherit; font-size: 14px; min-width: 280px;
+    border-radius: 8px; padding: 9px 12px; font: inherit; font-size: 14px;
   }
+  .set-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 8px; max-height: 340px; overflow-y: auto; margin-top: 12px;
+    padding-right: 4px;
+  }
+  .set-tile {
+    display: flex; align-items: center; gap: 10px; text-align: left;
+    background: var(--surface); border: 1px solid var(--hair); border-radius: 8px;
+    padding: 8px 10px; color: var(--ink); font-size: 13px;
+  }
+  .set-tile:hover { border-color: var(--gold); }
+  .set-tile img { width: 22px; height: 22px; flex: none; filter: invert(0.9); }
+  .set-tile .yr { color: var(--muted); margin-left: auto; font-size: 12px; flex: none; }
   .auth-card {
     background: var(--surface); border: 1px solid var(--hair); border-radius: 12px;
     padding: 22px; width: min(92vw, 380px); cursor: default;
@@ -148,7 +177,7 @@
     border-radius: 999px; padding: 4px 12px; font-size: 12.5px;
   }
   .chips button.active { background: var(--surface); border-color: var(--gold); color: var(--ink); }
-  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 26px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 26px; }
   .kpi { background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; padding: 16px 18px; }
   .kpi .v { font-size: 34px; font-weight: 600; line-height: 1.15; }
   .kpi .k { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
@@ -198,7 +227,8 @@
 
 <header>
   <div class="brand">Council's Judgment</div>
-  <span id="fmt-pill" class="fmt-pill hidden"></span>
+  <button id="fmt-pill" class="fmt-pill hidden"></button>
+  <div id="pool-menu" class="pool-menu hidden"></div>
   <nav>
     <button id="nav-play" class="active">Play</button>
     <button id="nav-stats">Stats</button>
@@ -230,7 +260,8 @@
          printing those cards have ever had.</p>
     </div>
     <div class="set-pick" id="set-pick">
-      <select id="set-select"><option value="">Loading sets&hellip;</option></select>
+      <input id="set-search" type="search" placeholder="Search sets&hellip;" aria-label="Search sets">
+      <div class="set-grid" id="set-grid"></div>
     </div>
   </section>
 
@@ -578,13 +609,42 @@ function show(view) {
   const label = poolLabel(state.format);
   pill.classList.toggle("hidden", view !== "duel" || !label);
   if (label) pill.textContent = label;
+  $("#pool-menu").classList.add("hidden");
 }
+
+$("#fmt-pill").onclick = ev => {
+  ev.stopPropagation();
+  const menu = $("#pool-menu");
+  if (!menu.classList.contains("hidden")) { menu.classList.add("hidden"); return; }
+  const items = [{ key: "any", label: "All cards" },
+                 ...(state.staples || { formats: [] }).formats
+                   .filter(f => f.names.length)
+                   .map(f => ({ key: f.key, label: f.label }))];
+  if (state.format && state.format.startsWith("set:"))
+    items.push({ key: state.format, label: poolLabel(state.format) || state.format });
+  menu.innerHTML = items.map(i =>
+    `<button data-key="${esc(i.key)}"${i.key === state.format ? ' class="current"' : ""}>${esc(i.label)}</button>`
+  ).join("") + `<hr><button data-key="__sets">Choose a set&hellip;</button>`;
+  menu.querySelectorAll("button").forEach(b => {
+    b.onclick = () => {
+      menu.classList.add("hidden");
+      if (b.dataset.key === "__sets") show("home");
+      else setFormat(b.dataset.key);
+    };
+  });
+  menu.classList.remove("hidden");
+};
+document.addEventListener("click", () => {
+  const menu = $("#pool-menu");
+  if (menu) menu.classList.add("hidden");
+});
 
 const fmtEntry = key =>
   (state.staples ? state.staples.formats.find(f => f.key === key) : null) || null;
 
 function poolLabel(key) {
   if (!key) return null;
+  if (key === "any") return "All cards";
   if (key.startsWith("set:")) {
     const s = (state.sets || []).find(x => "set:" + x.code === key);
     return s ? s.name : null;
@@ -604,12 +664,14 @@ async function getSets() {
   if (state.sets) return state.sets;
   try {
     const hit = JSON.parse(localStorage.getItem("mtgart.sets"));
-    if (hit && Date.now() - hit.t < CACHE_TTL) return (state.sets = hit.s);
+    if (hit && Date.now() - hit.t < CACHE_TTL && hit.s[0] && "icon" in hit.s[0])
+      return (state.sets = hit.s);
   } catch (e) {}
   const d = await scry("https://api.scryfall.com/sets");
   const sets = (d.data || [])
     .filter(s => !s.digital && s.card_count >= 50 && SET_TYPES.has(s.set_type))
-    .map(s => ({ code: s.code, name: s.name, year: (s.released_at || "").slice(0, 4) }));
+    .map(s => ({ code: s.code, name: s.name, icon: s.icon_svg_uri || null,
+                 year: (s.released_at || "").slice(0, 4) }));
   try { localStorage.setItem("mtgart.sets", JSON.stringify({ t: Date.now(), s: sets })); }
   catch (e) {}
   return (state.sets = sets);
@@ -666,12 +728,30 @@ async function loadHome() {
     b.onclick = () => setFormat(f.key);
     grid.appendChild(b);
   }
+  const anyTile = document.createElement("button");
+  anyTile.className = "fmt-tile";
+  anyTile.innerHTML = `<div class="name">All cards</div>
+    <div class="meta">no pool &middot; scryfall.com random</div>
+    <div class="samples">Any Magic card with more than one art, drawn from the whole multiverse.</div>`;
+  anyTile.onclick = () => setFormat("any");
+  grid.appendChild(anyTile);
   try {
     const sets = await getSets();
-    const sel = $("#set-select");
-    sel.innerHTML = `<option value="">Choose a set&hellip;</option>` +
-      sets.map(s => `<option value="${esc(s.code)}">${esc(s.name)} (${s.year})</option>`).join("");
-    sel.onchange = () => { if (sel.value) setFormat("set:" + sel.value); };
+    const renderSetGrid = filter => {
+      const q = (filter || "").trim().toLowerCase();
+      const grid2 = $("#set-grid");
+      grid2.innerHTML = sets
+        .filter(s => !q || s.name.toLowerCase().includes(q) || s.code.includes(q))
+        .map(s => `<button class="set-tile" data-code="${esc(s.code)}">
+            ${s.icon ? `<img src="${esc(s.icon)}" alt="" loading="lazy">` : ""}
+            <span>${esc(s.name)}</span><span class="yr">${esc(s.year)}</span>
+          </button>`).join("");
+      grid2.querySelectorAll(".set-tile").forEach(b => {
+        b.onclick = () => setFormat("set:" + b.dataset.code);
+      });
+    };
+    renderSetGrid("");
+    $("#set-search").oninput = ev => renderSetGrid(ev.target.value);
   } catch (e) {
     $("#set-pick").classList.add("hidden");
   }
@@ -720,8 +800,33 @@ function shuffle(arr) {
   return arr;
 }
 
+// "All cards" pool: Scryfall's random-card endpoint, filtered to cards with
+// several printings so a second art is likely.
+async function randomMatchup() {
+  for (let tries = 0; tries < 6; tries++) {
+    const c = await scry("https://api.scryfall.com/cards/random?q=" +
+                         encodeURIComponent("prints>2 -is:digital"));
+    if (!c) continue;
+    const name = (c.name || "").split(" //")[0];
+    if (!name || getSeen("any").includes(name)) continue;
+    const prints = await getPrints(name);
+    markSeen("any", name);
+    if (prints.length >= 2) {
+      const i = Math.floor(Math.random() * prints.length);
+      let j = Math.floor(Math.random() * (prints.length - 1));
+      if (j >= i) j++;
+      const m = { format: "any", card: name,
+                  total_arts: prints.length, arts: [prints[i], prints[j]] };
+      m.arts.forEach(a => { const img = new Image(); img.src = a.art; });
+      return m;
+    }
+  }
+  throw new Error("could not find a random card with two arts");
+}
+
 async function newMatchup() {
   const pool = state.format;
+  if (pool === "any") return randomMatchup();
   const all = [...await poolNames(pool)];
   if (!all.length) throw new Error("no cards in this pool");
   // Draw unseen cards first so the whole pool cycles before repeats.
@@ -831,6 +936,16 @@ async function castVote(i) {
   });
 
   if (res) {
+    // Track how often this browser's picks match the community majority
+    // (excluding our own vote); the signed-in figure comes from the server.
+    const othersWith = res.pair.with_you - 1, othersAgainst = res.pair.against_you;
+    if (REMOTE && othersWith !== othersAgainst) {
+      let al = { s: 0, a: 0 };
+      try { al = JSON.parse(localStorage.getItem("mtgart.align")) || al; } catch (e) {}
+      al.s++;
+      if (othersWith > othersAgainst) al.a++;
+      try { localStorage.setItem("mtgart.align", JSON.stringify(al)); } catch (e) {}
+    }
     const n = res.pair.with_you + res.pair.against_you;
     $("#agree-note").innerHTML = n > 1
       ? `<b>${res.pair.agree_pct}%</b> of ${n} votes on this pairing agree with you
@@ -865,7 +980,8 @@ function openModal(src) {
 function statChips() {
   const wrap = $("#stat-chips");
   const all = [{ key: "all", label: "Everything" },
-               ...state.staples.formats.map(f => ({ key: f.key, label: f.label }))];
+               ...state.staples.formats.map(f => ({ key: f.key, label: f.label })),
+               { key: "any", label: "All cards" }];
   // when the current pool is a set, offer it as a filter too
   if (state.format && state.format.startsWith("set:"))
     all.push({ key: state.format, label: poolLabel(state.format) || state.format });
@@ -947,11 +1063,24 @@ async function loadStats() {
     return;
   }
   const t = s.totals;
+  let align = null;
+  if (REMOTE && currentUser && s.alignment && s.alignment.scored) align = s.alignment;
+  else if (REMOTE) {
+    try {
+      const a = JSON.parse(localStorage.getItem("mtgart.align"));
+      if (a && a.s) align = { scored: a.s, agreed: a.a };
+    } catch (e) {}
+  }
+  const alignTile = align
+    ? `<div class="kpi"><div class="v">${Math.round(100 * align.agreed / align.scored)}%</div>
+       <div class="k">your council alignment &middot; ${align.scored} scored</div></div>`
+    : "";
   body.innerHTML = `
     <div class="kpis">
       <div class="kpi"><div class="v">${t.votes.toLocaleString()}</div><div class="k">votes cast</div></div>
       <div class="kpi"><div class="v">${t.cards.toLocaleString()}</div><div class="k">cards contested</div></div>
       <div class="kpi"><div class="v">${t.arts.toLocaleString()}</div><div class="k">arts ranked</div></div>
+      ${alignTile}
     </div>
     <div class="panel">
       <h3>Top-ranked arts</h3>

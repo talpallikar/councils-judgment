@@ -25,9 +25,10 @@ MTGTOP8_CODES = {
 # shift over time, so they are parsed from the live form rather than pinned.
 PREFERRED_META = ("last 2 months", "last 4 months", "last 6 months")
 
-PAGES = 3          # 20 cards per page -> up to 60 staples per format
+PAGES = 25         # 20 cards per page -> up to 500 staples per format
 MIN_ACCEPT = 20    # reject a scrape that yields fewer names (likely a markup change)
 POLITE_DELAY = 0.6
+SCRYFALL_TOP = 500  # commander pool size via Scryfall EDHREC-rank ordering
 
 _meta_cache = {"ids": None, "at": 0.0}
 
@@ -79,17 +80,21 @@ def fetch_mtgtop8(session, fmt):
         found = re.findall(r"<td id=\w+_1 class=L14>([^<]+)</td>", r.text)
         if not found:
             break
+        added = 0
         for raw in found:
             name = htmllib.unescape(raw).strip()
             if name and name not in seen:
                 seen.add(name)
                 names.append(name)
+                added += 1
+        if not added:
+            break   # site repeats/clamps pages past the last one
         time.sleep(POLITE_DELAY)
     return names
 
 
 def fetch_edhrec(session, limit=100):
-    """Most-played Commander cards of the past month."""
+    """Most-played Commander cards of the past month (fallback source)."""
     r = session.get(EDHREC_URL, timeout=20)
     r.raise_for_status()
     cardlists = r.json()["container"]["json_dict"]["cardlists"]
@@ -103,9 +108,35 @@ def fetch_edhrec(session, limit=100):
     return names[:limit]
 
 
+def fetch_scryfall_top(session, fmt, limit=SCRYFALL_TOP):
+    """Top cards of a format by EDHREC rank via Scryfall (deep, paginated)."""
+    url = "https://api.scryfall.com/cards/search"
+    params = {"q": f"format:{fmt} -is:digital", "order": "edhrec", "unique": "cards"}
+    names, seen = [], set()
+    while url and len(names) < limit:
+        r = session.get(url, params=params, timeout=20)
+        r.raise_for_status()
+        data = r.json()
+        for c in data.get("data", []):
+            name = c.get("name", "").split(" //")[0].strip()
+            if name and name not in seen:
+                seen.add(name)
+                names.append(name)
+        url = data.get("next_page") if data.get("has_more") else None
+        params = None   # next_page is a complete URL
+        time.sleep(0.12)
+    return names[:limit]
+
+
 def fetch_for(session, fmt):
     """Return (names, source_label) for a format from its live source."""
     if fmt == "commander":
+        try:
+            names = fetch_scryfall_top(session, "commander")
+            if len(names) >= MIN_ACCEPT:
+                return names, "scryfall.com (EDHREC rank)"
+        except Exception:
+            pass
         return fetch_edhrec(session), "edhrec.com"
     if fmt in MTGTOP8_CODES:
         return fetch_mtgtop8(session, fmt), "mtgtop8.com"

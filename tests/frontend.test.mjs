@@ -45,6 +45,7 @@ global.fetch = url => {
   const u = String(url);
   let payload;
   if (u === "staples.json") payload = staplesFixture;
+  else if (u.includes("cards/random")) payload = FIX("scryfall_bolt.json").data[0];
   else if (u.includes("Lightning")) payload = FIX("scryfall_bolt.json");
   else if (u.includes("Delver")) payload = FIX("scryfall_delver.json");
   else throw new Error("unexpected fetch in test: " + u);
@@ -58,7 +59,11 @@ before(async () => {
   src += "\nglobalThis.__T = { state, extractArt, wilson, newMatchup, recordVote, localStats, getPrints };";
   (0, eval)(src);
   T = globalThis.__T;
-  await new Promise(r => setTimeout(r, 50)); // let boot's loadHome settle
+  // Boot's loadHome chain includes a Scryfall rate-limit sleep of up to
+  // 120ms (the /sets fetch); wait it out fully, or boot's "resume last
+  // pool" check can fire startDuel mid-suite once a test sets state.format
+  // and race the tests' own draws.
+  await new Promise(r => setTimeout(r, 400));
 });
 
 beforeEach(() => {
@@ -131,6 +136,14 @@ test("newMatchup: cycles through the pool before repeating a card", async () => 
 test("newMatchup: format with empty staple list rejects", async () => {
   T.state.format = "vintage";
   await assert.rejects(() => T.newMatchup());
+});
+
+test("newMatchup: 'any' pool draws via Scryfall random", async () => {
+  T.state.format = "any";
+  const m = await T.newMatchup();
+  assert.equal(m.format, "any");
+  assert.equal(m.card, "Lightning Bolt");   // stubbed random card
+  assert.notEqual(m.arts[0].id, m.arts[1].id);
 });
 
 test("getPrints: second call is served from localStorage cache", async () => {

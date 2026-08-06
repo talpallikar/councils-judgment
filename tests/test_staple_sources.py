@@ -98,19 +98,16 @@ class Mtgtop8Test(unittest.TestCase):
         for n in names:
             self.assertNotRegex(n, r"%|\d+\.\d")
 
-    def test_deduplicates_across_pages(self):
+    def test_stops_when_page_repeats_content(self):
+        # Site clamps out-of-range pages to the last page; a page that adds
+        # no new names must stop the crawl instead of looping to PAGES.
         results = fixture("mtgtop8_results.html")
-        session = self._session([results, results, results])
+        session = self._session([results] * 5)
         names = staple_sources.fetch_mtgtop8(session, "modern")
         self.assertEqual(len(names), len(set(names)))
         self.assertEqual(len(names), 20)
-
-    def test_paginates_with_current_page_field(self):
-        results = fixture("mtgtop8_results.html")
-        session = self._session([results, results, results])
-        staple_sources.fetch_mtgtop8(session, "modern")
         pages = [d["current_page"] for d in session.post_data]
-        self.assertEqual(pages, ["1", "2", "3"])
+        self.assertEqual(pages, ["1", "2"])
 
     def test_stops_on_empty_page(self):
         results = fixture("mtgtop8_results.html")
@@ -134,15 +131,58 @@ class EdhrecTest(unittest.TestCase):
         self.assertEqual(len(staple_sources.fetch_edhrec(session, limit=5)), 5)
 
 
+class ScryfallTopTest(unittest.TestCase):
+    def test_paginates_and_dedupes_front_face_names(self):
+        page2 = FakeResponse(payload={"data": [{"name": "Card B"}, {"name": "Fable // Back"}],
+                                      "has_more": False})
+        page1 = FakeResponse(payload={"data": [{"name": "Card A"}, {"name": "Card B"}],
+                                      "has_more": True, "next_page": "https://x/2"})
+
+        class Session(FakeSession):
+            def __init__(self):
+                self.calls = 0
+
+            def get(self, url, **kw):
+                self.calls += 1
+                return page1 if self.calls == 1 else page2
+
+        names = staple_sources.fetch_scryfall_top(Session(), "commander")
+        self.assertEqual(names, ["Card A", "Card B", "Fable"])
+
+    def test_respects_limit(self):
+        payload = {"data": [{"name": f"Card {i}"} for i in range(60)], "has_more": False}
+        session = FakeSession(get_response=FakeResponse(payload=payload))
+        names = staple_sources.fetch_scryfall_top(session, "commander", limit=10)
+        self.assertEqual(len(names), 10)
+
+
 class FetchForTest(unittest.TestCase):
     def test_unknown_format_raises(self):
         with self.assertRaises(KeyError):
             staple_sources.fetch_for(FakeSession(), "pauper")
 
-    def test_commander_uses_edhrec(self):
-        payload = json.loads(fixture("edhrec_top.json"))
+    def test_commander_prefers_scryfall_rank(self):
+        payload = {"data": [{"name": f"Card {i}"} for i in range(30)], "has_more": False}
         session = FakeSession(get_response=FakeResponse(payload=payload))
         names, source = staple_sources.fetch_for(session, "commander")
+        self.assertEqual(source, "scryfall.com (EDHREC rank)")
+        self.assertEqual(len(names), 30)
+
+    def test_commander_falls_back_to_edhrec(self):
+        # Scryfall path returning too few names -> EDHREC JSON fallback.
+        payload = json.loads(fixture("edhrec_top.json"))
+
+        class Session(FakeSession):
+            def __init__(self):
+                self.calls = 0
+
+            def get(self, url, **kw):
+                self.calls += 1
+                if "scryfall" in url:
+                    return FakeResponse(payload={"data": [], "has_more": False})
+                return FakeResponse(payload=payload)
+
+        names, source = staple_sources.fetch_for(Session(), "commander")
         self.assertEqual(source, "edhrec.com")
         self.assertIn("Sol Ring", names)
 
