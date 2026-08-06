@@ -1,0 +1,202 @@
+{
+ "object": "list",
+ "has_more": false,
+ "data": [
+  {
+   "name": "Delver of Secrets // Insectile Aberration",
+   "artist": "Nils Hamm",
+   "set_name": "Innistrad",
+   "set": "isd",
+   "released_at": "2011-09-30",
+   "card_faces": [
+    {
+     "name": "Delver of Secrets",
+     "illustration_id": "1c2fee9b-89ea-4ab1-a751-451c3cd65a88",
+     "artist": "Nils Hamm",
+     "image_uris": {
+      "normal": "https://cards.scryfall.io/normal/front/1/1/11bf83bb-c95b-4b4f-9a56-ce7a1816307a.jpg?1783940984",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/1/1/11bf83bb-c95b-4b4f-9a56-ce7a1816307a.jpg?1783940984"
+     }
+    },
+    {
+     "name": "Insectile Aberration",
+     "illustration_id": "c2b5f731-771b-4949-90f3-0ad40d676100",
+     "artist": "Nils Hamm",
+     "image_uris": {
+      "normal": "https://cards.scryfall.io/normal/back/1/1/11bf83bb-c95b-4b4f-9a56-ce7a1816307a.jpg?1783940984",
+      "art_crop": "https://cards.scryfall.io/art_crop/back/1/1/11bf83bb-c95b-4b4f-9a56-ce7a1816307a.jpg?1783940984"
+     }
+    }
+   ],
+   "layout": "transform"
+  },
+  {
+   "name": "Delver of Secrets // Insectile Aberration",
+   "artist": "Lius Lasahido",
+   "set_name": "From the Vault: Transform",
+   "set": "v17",
+   "released_at": "2017-11-24",
+   "card_faces": [
+    {
+     "name": "Delver of Secrets",
+     "illustration_id": "f057ade6-99c3-4fd6-8818-a00bc0b28696",
+     "artist": "Lius Lasahido",
+     "image_uris": {
+      "normal": "https://cards.scryfall.io/normal/front/2/8/28059d09-2c7d-4c61-af55-8942107a7c1f.jpg?1783935481",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/2/8/28059d09-2c7d-4c61-af55-8942107a7c1f.jpg?1783935481"
+     }
+    },
+    {
+     "name": "Insectile Aberration",
+     "illustration_id": "7719db45-6774-4005-85ab-ccc6923a1545",
+     "artist": "Lius Lasahido",
+     "image_uris": {
+      "normal": "https://cards.scryfall.io/normal/back/2/8/28059d09-2c7d-4c61-af55-8942107a7c1f.jpg?1783935481",
+      "art_crop": "https://cards.scryfall.io/art_crop/back/2/8/28059d09-2c7d-4c61-af55-8942107a7c1f.jpg?1783935481"
+     }
+    }
+   ],
+   "layout": "transform"
+  },
+  {
+   "name": "Delver of Secrets // Insectile Aberration",
+   "artist": "Matt Stewart",
+   "set_name": "Innistrad: Midnight Hunt",
+   "set": "mid",
+   "released_at": "2021-09-24",
+   "card_faces": [
+    {
+     "name": "Delver of Secrets",
+     "illustration_id": "9b572479-d64a-4d61-bd09-2c9a95138ddb",
+     "artist": "Matt Stewart",
+     "image_uris": {
+      "normal": "https://cards.scryfall.io/normal/front/a/b/abff6c81-65a4-48fa-ba8f-580f87b0344a.jpg?1783925652",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/a/b/abff6c81-65a4-48fa-ba8f-580f87b0344a.jpg?1783925652"
+     }
+    },
+    {
+     "name": "Insectile Aberration",
+     "illustration_id": "83f0906b-d0e5-4725-ab5b-e33ed3387123",
+     "artist": "Matt Stewart",
+     "image_uris": {
+      "normal": "https://cards.scryfall.io/normal/back/a/b/abff6c81-65a4-48fa-ba8f-580f87b0344a.jpg?1783925652",
+      "art_crop": "https://cards.scryfall.io/art_crop/back/a/b/abff6c81-65a4-48fa-ba8f-580f87b0344a.jpg?1783925652"
+     }
+    }
+   ],
+   "layout": "transform"
+  },
+  {
+   "name": "Delver of Secrets // Delver of Secrets",
+   "artist": "Matt Stewart",
+   "set_name": "Midnight Hunt Art Series",
+   "set": "amid",
+   "released_at": "2021-09-24",
+   "card_faces": [
+    {
+     "name": "Delver of Secrets",
+     "illustration_id": "9b572479-d64a-4d61-bd09-2c9a95138ddb",
+     "artist": "Matt Stewart",
+     "image_uris": {
+      "normal": "https://cards.scryfall.io/normal/front/c/a/ca2e0aa3-93ee-4d47-86f1-3a9e2fc16c48.jpg?1783925450",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/c/a/ca2e0aa3-93ee-4d47-86f1-3a9e2fc16c48.jpg?1783925450"
+     }
+    },
+    {
+     "name": "Delver of Secrets",
+     "illustration_id": "feb9686a-efa8-4218-9d61-76bff6503ea5",
+     "artist": "Matt Stewart",
+     "image_uris": {
+      "normal": "https://cards.scryfall.io/normal/back/c/a/ca2e0aa3-93ee-4d47-86f1-3a9e2fc16c48.jpg?1783925450",
+      "art_crop": "https://cards.scryfall.io/art_crop/back/c/a/ca2e0aa3-93ee-4d47-86f1-3a9e2fc16c48.jpg?1783925450"
+     }
+    }
+   ],
+   "layout": "art_series"
+  },
+  {
+   "name": "Delver of Secrets // Insectile Aberration",
+   "artist": "Matt Stewart",
+   "set_name": "Innistrad: Double Feature",
+   "set": "dbl",
+   "released_at": "2022-01-28",
+   "card_faces": [
+    {
+     "name": "Delver of Secrets",
+     "illustration_id": "5c1a6d64-b62d-43f5-9a0a-4e0e11c2aa5e",
+     "artist": "Matt Stewart",
+     "image_uris": {
+      "normal": "https://cards.scryfall.io/normal/front/a/9/a992bbe3-c389-4a4a-927b-dfc01a4cd9be.jpg?1783924458",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/a/9/a992bbe3-c389-4a4a-927b-dfc01a4cd9be.jpg?1783924458"
+     }
+    },
+    {
+     "name": "Insectile Aberration",
+     "illustration_id": "d910136b-81f1-4772-a257-5dac5b8bed59",
+     "artist": "Matt Stewart",
+     "image_uris": {
+      "normal": "https://cards.scryfall.io/normal/back/a/9/a992bbe3-c389-4a4a-927b-dfc01a4cd9be.jpg?1783924458",
+      "art_crop": "https://cards.scryfall.io/art_crop/back/a/9/a992bbe3-c389-4a4a-927b-dfc01a4cd9be.jpg?1783924458"
+     }
+    }
+   ],
+   "layout": "transform"
+  },
+  {
+   "name": "Delver of Secrets // Insectile Aberration",
+   "artist": "Nana Qi & GodMachine",
+   "set_name": "Secret Lair Drop",
+   "set": "sld",
+   "released_at": "2023-05-08",
+   "card_faces": [
+    {
+     "name": "Delver of Secrets",
+     "illustration_id": "a0813bb5-6b51-4e8e-b9ea-d7e5daa0f28d",
+     "artist": "Nana Qi",
+     "image_uris": {
+      "normal": "https://cards.scryfall.io/normal/front/8/8/888fbfaf-dbf9-4045-a79e-d436ef75b3cf.jpg?1783916540",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/8/8/888fbfaf-dbf9-4045-a79e-d436ef75b3cf.jpg?1783916540"
+     }
+    },
+    {
+     "name": "Insectile Aberration",
+     "illustration_id": "5663c690-9403-455b-ac9c-0feda94b31fb",
+     "artist": "GodMachine",
+     "image_uris": {
+      "normal": "https://cards.scryfall.io/normal/back/8/8/888fbfaf-dbf9-4045-a79e-d436ef75b3cf.jpg?1783916540",
+      "art_crop": "https://cards.scryfall.io/art_crop/back/8/8/888fbfaf-dbf9-4045-a79e-d436ef75b3cf.jpg?1783916540"
+     }
+    }
+   ],
+   "layout": "transform"
+  },
+  {
+   "name": "Delver of Secrets // Insectile Aberration",
+   "artist": "Florey & Scott Okumura",
+   "set_name": "Secret Lair Drop",
+   "set": "sld",
+   "released_at": "2026-03-02",
+   "card_faces": [
+    {
+     "name": "Delver of Secrets",
+     "illustration_id": "2b7de362-970f-48a4-99b4-b589437b0657",
+     "artist": "Florey",
+     "image_uris": {
+      "normal": "https://cards.scryfall.io/normal/front/a/8/a808459c-f086-4cb6-a53e-4b9e196c1000.jpg?1783904222",
+      "art_crop": "https://cards.scryfall.io/art_crop/front/a/8/a808459c-f086-4cb6-a53e-4b9e196c1000.jpg?1783904222"
+     }
+    },
+    {
+     "name": "Insectile Aberration",
+     "illustration_id": "d2521e61-67a8-4a87-8ab6-e8825dc3849e",
+     "artist": "Scott Okumura",
+     "image_uris": {
+      "normal": "https://cards.scryfall.io/normal/back/a/8/a808459c-f086-4cb6-a53e-4b9e196c1000.jpg?1783904222",
+      "art_crop": "https://cards.scryfall.io/art_crop/back/a/8/a808459c-f086-4cb6-a53e-4b9e196c1000.jpg?1783904222"
+     }
+    }
+   ],
+   "layout": "transform"
+  }
+ ]
+}

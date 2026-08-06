@@ -1,0 +1,87 @@
+{
+ "container": {
+  "json_dict": {
+   "cardlists": [
+    {
+     "cardviews": [
+      {
+       "name": "Sol Ring"
+      },
+      {
+       "name": "Arcane Signet"
+      },
+      {
+       "name": "Swords to Plowshares"
+      },
+      {
+       "name": "Path to Exile"
+      },
+      {
+       "name": "Counterspell"
+      },
+      {
+       "name": "Cultivate"
+      },
+      {
+       "name": "Assassin's Trophy"
+      },
+      {
+       "name": "Blasphemous Act"
+      },
+      {
+       "name": "Farseek"
+      },
+      {
+       "name": "Talisman of Dominance"
+      },
+      {
+       "name": "Heroic Intervention"
+      },
+      {
+       "name": "Nature's Lore"
+      },
+      {
+       "name": "Beast Within"
+      },
+      {
+       "name": "Birds of Paradise"
+      },
+      {
+       "name": "Talisman of Indulgence"
+      },
+      {
+       "name": "An Offer You Can't Refuse"
+      },
+      {
+       "name": "Dark Ritual"
+      },
+      {
+       "name": "Talisman of Creativity"
+      },
+      {
+       "name": "Talisman of Hierarchy"
+      },
+      {
+       "name": "Chaos Warp"
+      },
+      {
+       "name": "Ignoble Hierarch"
+      },
+      {
+       "name": "Rampant Growth"
+      },
+      {
+       "name": "Talisman of Progress"
+      },
+      {
+       "name": "Anguished Unmaking"
+      },
+      {
+       "name": "Swiftfoot Boots"
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

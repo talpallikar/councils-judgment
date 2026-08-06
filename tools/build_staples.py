@@ -34,7 +34,7 @@ def scryfall_popular(session, fmt, limit=75):
     return [c["name"].split(" //")[0] for c in r.json().get("data", [])][:limit]
 
 
-def main():
+def main(out_path=OUT):
     session = requests.Session()
     session.headers.update({
         "User-Agent": "CouncilsJudgment/1.0 (MTG art voting; GitHub Pages hobby app)",
@@ -42,8 +42,8 @@ def main():
     })
 
     old = {}
-    if os.path.exists(OUT):
-        with open(OUT) as f:
+    if os.path.exists(out_path):
+        with open(out_path) as f:
             old = {e["key"]: e for e in json.load(f)["formats"]}
 
     formats, fresh = [], 0
@@ -82,9 +82,9 @@ def main():
                          "updated_at": None, "names": []}
         formats.append(entry)
 
-    with open(OUT, "w") as f:
+    with open(out_path, "w") as f:
         json.dump({"generated_at": int(time.time()), "formats": formats}, f, indent=1)
-    print(f"wrote {OUT} ({fresh}/{len(FORMATS)} formats freshly scraped)")
+    print(f"wrote {out_path} ({fresh}/{len(FORMATS)} formats freshly scraped)")
     return 0 if fresh else 1
 
 

@@ -1,0 +1,110 @@
+{
+ "object": "list",
+ "has_more": false,
+ "data": [
+  {
+   "name": "Lightning Bolt",
+   "illustration_id": "2cb6200c-d05b-419c-bd10-8b9c146e2339",
+   "artist": "Christopher Rush",
+   "set_name": "Limited Edition Alpha",
+   "set": "lea",
+   "released_at": "1993-08-05",
+   "image_uris": {
+    "normal": "https://cards.scryfall.io/normal/front/d/5/d573ef03-4730-45aa-93dd-e45ac1dbaf4a.jpg?1783948684",
+    "art_crop": "https://cards.scryfall.io/art_crop/front/d/5/d573ef03-4730-45aa-93dd-e45ac1dbaf4a.jpg?1783948684"
+   },
+   "layout": "normal"
+  },
+  {
+   "name": "Lightning Bolt",
+   "illustration_id": "013e7eda-ef8e-44cd-9832-4033d9de1c34",
+   "artist": "Christopher Moeller",
+   "set_name": "Magic 2010",
+   "set": "m10",
+   "released_at": "2009-07-17",
+   "image_uris": {
+    "normal": "https://cards.scryfall.io/normal/front/4/3/435589bb-27c6-4a6d-9d63-394d5092b9d8.jpg?1783942371",
+    "art_crop": "https://cards.scryfall.io/art_crop/front/4/3/435589bb-27c6-4a6d-9d63-394d5092b9d8.jpg?1783942371"
+   },
+   "layout": "normal"
+  },
+  {
+   "name": "Lightning Bolt",
+   "illustration_id": "8b6a845f-00a7-416b-a421-6527fff0873d",
+   "artist": "V\u00e9ronique Meignaud",
+   "set_name": "Magic Player Rewards 2010",
+   "set": "p10",
+   "released_at": "2010-01-01",
+   "image_uris": {
+    "normal": "https://cards.scryfall.io/normal/front/2/8/28708c8c-4336-4d04-b43a-59a31471a9f6.jpg?1783942076",
+    "art_crop": "https://cards.scryfall.io/art_crop/front/2/8/28708c8c-4336-4d04-b43a-59a31471a9f6.jpg?1783942076"
+   },
+   "layout": "normal"
+  },
+  {
+   "name": "Lightning Bolt",
+   "illustration_id": "64e4a81f-06d1-4c69-9fd6-d585c445c5ad",
+   "artist": "Kekai Kotaki",
+   "set_name": "MagicFest 2019",
+   "set": "pf19",
+   "released_at": "2019-01-01",
+   "image_uris": {
+    "normal": "https://cards.scryfall.io/normal/front/f/f/ff204024-20a5-4bb9-82b6-f6b4337efd60.jpg?1783933733",
+    "art_crop": "https://cards.scryfall.io/art_crop/front/f/f/ff204024-20a5-4bb9-82b6-f6b4337efd60.jpg?1783933733"
+   },
+   "layout": "normal"
+  },
+  {
+   "name": "Lightning Bolt",
+   "illustration_id": "928b4c38-1997-4a49-8ce4-d5e0b7d98f4e",
+   "artist": "Noah Bradley",
+   "set_name": "Secret Lair Drop",
+   "set": "sld",
+   "released_at": "2020-06-04",
+   "image_uris": {
+    "normal": "https://cards.scryfall.io/normal/front/4/5/45184cd7-b037-4a85-a063-e622ca928d17.jpg?1783930772",
+    "art_crop": "https://cards.scryfall.io/art_crop/front/4/5/45184cd7-b037-4a85-a063-e622ca928d17.jpg?1783930772"
+   },
+   "layout": "normal"
+  },
+  {
+   "name": "Lightning Bolt",
+   "illustration_id": "533f83fb-50e3-4711-b496-9ff377ed9a99",
+   "artist": "Brigitte Roka",
+   "set_name": "Secret Lair Drop",
+   "set": "sld",
+   "released_at": "2020-06-04",
+   "image_uris": {
+    "normal": "https://cards.scryfall.io/normal/front/6/f/6fb94c1b-8002-4d79-add0-c4dfef9019ee.jpg?1783930772",
+    "art_crop": "https://cards.scryfall.io/art_crop/front/6/f/6fb94c1b-8002-4d79-add0-c4dfef9019ee.jpg?1783930772"
+   },
+   "layout": "normal"
+  },
+  {
+   "name": "Lightning Bolt",
+   "illustration_id": "71072321-4655-4565-b37f-698c8031869f",
+   "artist": "Robbie Trevino",
+   "set_name": "Secret Lair Drop",
+   "set": "sld",
+   "released_at": "2020-06-04",
+   "image_uris": {
+    "normal": "https://cards.scryfall.io/normal/front/6/a/6ab06973-6440-4b12-8947-8c412500fa41.jpg?1783930773",
+    "art_crop": "https://cards.scryfall.io/art_crop/front/6/a/6ab06973-6440-4b12-8947-8c412500fa41.jpg?1783930773"
+   },
+   "layout": "normal"
+  },
+  {
+   "name": "Lightning Bolt",
+   "illustration_id": "e046c605-7f9f-4f48-be65-a3a7785cfb18",
+   "artist": "Alexis Ziritt",
+   "set_name": "Secret Lair Drop",
+   "set": "sld",
+   "released_at": "2020-06-04",
+   "image_uris": {
+    "normal": "https://cards.scryfall.io/normal/front/c/3/c3eb3895-b64c-46ab-b704-3c46963920ba.jpg?1783930773",
+    "art_crop": "https://cards.scryfall.io/art_crop/front/c/3/c3eb3895-b64c-46ab-b704-3c46963920ba.jpg?1783930773"
+   },
+   "layout": "normal"
+  }
+ ]
+}
