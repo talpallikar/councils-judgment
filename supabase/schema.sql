@@ -317,6 +317,33 @@ select jsonb_build_object(
          where o.winner_id = uv.loser_id
            and o.loser_id = uv.winner_id) a_n
       from votes uv where uv.user_id = auth.uid()) t
+  ) end),
+  -- Consecutive correct calls (pick matched the community majority), over the
+  -- caller's scored votes in vote order. Judged against today's counts, so
+  -- old streaks can shift as the community keeps voting.
+  'streak', (case when auth.uid() is null then null else (
+    with mine as (
+      select uv.id,
+        (select count(*) from votes o
+         where o.winner_id = uv.winner_id
+           and o.loser_id = uv.loser_id and o.id <> uv.id) w_n,
+        (select count(*) from votes o
+         where o.winner_id = uv.loser_id
+           and o.loser_id = uv.winner_id) a_n
+      from votes uv where uv.user_id = auth.uid()
+    ), scored as (
+      select id, (w_n > a_n) correct, row_number() over (order by id) rn
+      from mine where w_n <> a_n
+    ), islands as (
+      select correct, count(*)::int len, max(rn) mx
+      from (select *, rn - row_number() over (partition by correct order by rn) grp
+            from scored) g
+      group by correct, grp
+    )
+    select jsonb_build_object(
+      'current', coalesce((select len from islands
+                           where correct and mx = (select max(rn) from scored)), 0),
+      'best', coalesce((select max(len) from islands where correct), 0))
   ) end)
 )
 $$;

@@ -630,6 +630,19 @@ function localStats(fmt) {
   };
 }
 
+// Local streak ledger: consecutive picks matching the community majority.
+// Unscored votes (no other voters yet, or tied) leave the streak untouched.
+function bumpStreak(scored, correct) {
+  let st = { cur: 0, best: 0 };
+  try { st = JSON.parse(localStorage.getItem("mtgart.streak")) || st; } catch (e) {}
+  if (scored) {
+    st.cur = correct ? st.cur + 1 : 0;
+    st.best = Math.max(st.best, st.cur);
+    try { localStorage.setItem("mtgart.streak", JSON.stringify(st)); } catch (e) {}
+  }
+  return st;
+}
+
 const getStats = fmt => REMOTE
   ? rpc("get_stats", { fmt, p_mine: state.statScope === "mine" })
   : Promise.resolve(localStats(fmt));
@@ -1061,18 +1074,28 @@ async function castVote(i) {
     // Track how often this browser's picks match the community majority
     // (excluding our own vote); the signed-in figure comes from the server.
     const othersWith = res.pair.with_you - 1, othersAgainst = res.pair.against_you;
-    if (REMOTE && othersWith !== othersAgainst) {
-      let al = { s: 0, a: 0 };
-      try { al = JSON.parse(localStorage.getItem("mtgart.align")) || al; } catch (e) {}
-      al.s++;
-      if (othersWith > othersAgainst) al.a++;
-      try { localStorage.setItem("mtgart.align", JSON.stringify(al)); } catch (e) {}
+    const scored = othersWith !== othersAgainst;
+    let streakNote = "";
+    if (REMOTE) {
+      if (scored) {
+        let al = { s: 0, a: 0 };
+        try { al = JSON.parse(localStorage.getItem("mtgart.align")) || al; } catch (e) {}
+        al.s++;
+        if (othersWith > othersAgainst) al.a++;
+        try { localStorage.setItem("mtgart.align", JSON.stringify(al)); } catch (e) {}
+      }
+      const st = bumpStreak(scored, othersWith > othersAgainst);
+      if (scored) {
+        streakNote = othersWith > othersAgainst
+          ? ` &middot; streak ${st.cur}`
+          : ` &middot; streak reset`;
+      }
     }
     const n = res.pair.with_you + res.pair.against_you;
-    $("#agree-note").innerHTML = n > 1
+    $("#agree-note").innerHTML = (n > 1
       ? `<b>${res.pair.agree_pct}%</b> of ${n} votes on this pairing agree with you
-         &middot; ${res.card_votes} total votes on ${esc(m.card)}`
-      : `You're the first to vote on this pairing.`;
+         &middot; ${res.card_votes} total votes on ${esc(m.mode === "cross" ? winner.card : m.card)}`
+      : `You're the first to vote on this pairing.`) + streakNote;
   }
   const next = document.createElement("button");
   next.className = "next-btn";
@@ -1197,12 +1220,24 @@ async function loadStats() {
     ? `<div class="kpi"><div class="v">${Math.round(100 * align.agreed / align.scored)}%</div>
        <div class="k">your council alignment &middot; ${align.scored} scored</div></div>`
     : "";
+  let streak = null;
+  if (REMOTE && currentUser && s.streak) streak = s.streak;
+  else if (REMOTE) {
+    try {
+      const st = JSON.parse(localStorage.getItem("mtgart.streak"));
+      if (st) streak = { current: st.cur, best: st.best };
+    } catch (e) {}
+  }
+  const streakTile = streak && streak.best
+    ? `<div class="kpi"><div class="v">${streak.current}</div>
+       <div class="k">streak &middot; best ${streak.best}</div></div>`
+    : "";
   body.innerHTML = `
     <div class="kpis">
       <div class="kpi"><div class="v">${t.votes.toLocaleString()}</div><div class="k">votes cast</div></div>
       <div class="kpi"><div class="v">${t.cards.toLocaleString()}</div><div class="k">cards contested</div></div>
       <div class="kpi"><div class="v">${t.arts.toLocaleString()}</div><div class="k">arts ranked</div></div>
-      ${alignTile}
+      ${alignTile}${streakTile}
     </div>
     <div class="panel">
       <h3>Top-ranked arts</h3>

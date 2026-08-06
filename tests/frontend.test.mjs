@@ -56,7 +56,7 @@ let T;
 before(async () => {
   const html = readFileSync(join(HERE, "..", "docs", "index.html"), "utf8");
   let src = html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('"use strict";', "");
-  src += "\nglobalThis.__T = { state, extractArt, wilson, newMatchup, recordVote, localStats, getPrints };";
+  src += "\nglobalThis.__T = { state, extractArt, wilson, newMatchup, recordVote, localStats, getPrints, bumpStreak };";
   (0, eval)(src);
   T = globalThis.__T;
   // Boot's loadHome chain includes a Scryfall rate-limit sleep of up to
@@ -157,6 +157,15 @@ test("getPrints: second call is served from localStorage cache", async () => {
   } finally {
     global.fetch = realFetch;
   }
+});
+
+// ---- streak ----
+test("bumpStreak: counts correct runs, resets on miss, skips unscored", () => {
+  assert.deepEqual(T.bumpStreak(true, true), { cur: 1, best: 1 });
+  assert.deepEqual(T.bumpStreak(true, true), { cur: 2, best: 2 });
+  assert.deepEqual(T.bumpStreak(false, false), { cur: 2, best: 2 }); // unscored: no change
+  assert.deepEqual(T.bumpStreak(true, false), { cur: 0, best: 2 }); // miss: reset
+  assert.deepEqual(T.bumpStreak(true, true), { cur: 1, best: 2 });
 });
 
 // ---- solo votes & stats ----
