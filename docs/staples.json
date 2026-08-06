@@ -1,11 +1,11 @@
 {
- "generated_at": 1785997176,
+ "generated_at": 1785998630,
  "formats": [
   {
    "key": "standard",
    "label": "Standard",
    "source": "mtgtop8.com",
-   "updated_at": 1785997168,
+   "updated_at": 1785998621,
    "names": [
     "Steam Vents",
     "Riverpyre Verge",
@@ -73,7 +73,7 @@
    "key": "pioneer",
    "label": "Pioneer",
    "source": "mtgtop8.com",
-   "updated_at": 1785997170,
+   "updated_at": 1785998623,
    "names": [
     "Thoughtseize",
     "Takenuma, Abandoned Mire",
@@ -141,7 +141,7 @@
    "key": "modern",
    "label": "Modern",
    "source": "mtgtop8.com",
-   "updated_at": 1785997172,
+   "updated_at": 1785998625,
    "names": [
     "Flooded Strand",
     "Arid Mesa",
@@ -209,7 +209,7 @@
    "key": "legacy",
    "label": "Legacy",
    "source": "mtgtop8.com",
-   "updated_at": 1785997174,
+   "updated_at": 1785998627,
    "names": [
     "Force of Will",
     "Brainstorm",
@@ -277,7 +277,7 @@
    "key": "vintage",
    "label": "Vintage",
    "source": "mtgtop8.com",
-   "updated_at": 1785997176,
+   "updated_at": 1785998629,
    "names": [
     "Black Lotus",
     "Mox Sapphire",
@@ -345,7 +345,7 @@
    "key": "commander",
    "label": "Commander",
    "source": "edhrec.com",
-   "updated_at": 1785997176,
+   "updated_at": 1785998630,
    "names": [
     "Sol Ring",
     "Arcane Signet",
