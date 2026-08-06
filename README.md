@@ -51,9 +51,14 @@ Details worth knowing:
   directly — row-level security is on with no policies. Everything goes
   through two `security definer` functions that validate format, card-name
   length, UUID illustration ids, and that art URLs point at
-  `cards.scryfall.io`. (A determined user can still stuff the ballot by
-  calling `record_vote` in a loop — acceptable for a hobby app; add
-  per-IP/user dedup later if it matters.)
+  `cards.scryfall.io`. The anon key in `config.js` is public **by design** —
+  it can only call these two functions.
+- **Rate limiting** lives inside `record_vote`: max 15 votes/minute and
+  250/hour per caller, and the same pairing can only be judged 3 times a day
+  by the same caller. Callers are identified by a salted SHA-256 hash of
+  their IP (from the request headers Supabase passes to Postgres) — raw IPs
+  are never stored. Determined abuse (rotating IPs) would need a bot check
+  like Turnstile in front; not worth it until real traffic shows up.
 - **Rankings** use the lower bound of the Wilson score interval, so a 3–0 art
   doesn't outrank a 40–10 one.
 

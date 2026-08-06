@@ -7,6 +7,9 @@
 --   record_vote(...)  insert one vote, returns the pairing's community split
 --   get_stats(fmt)    aggregate rankings for one format or 'all'
 
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
+
 create table if not exists votes (
   id bigint generated always as identity primary key,
   format text not null,
@@ -15,13 +18,22 @@ create table if not exists votes (
   loser_id uuid not null,
   winner_artist text, winner_set text, winner_art text,
   loser_artist  text, loser_set  text, loser_art  text,
+  voter_hash text,   -- sha256(salt + caller IP); raw IPs are never stored
   created_at timestamptz not null default now()
 );
 create index if not exists votes_card_idx on votes (card_name);
 create index if not exists votes_format_idx on votes (format);
+create index if not exists votes_voter_idx on votes (voter_hash, created_at);
 
 alter table votes enable row level security;
 revoke all on table votes from anon, authenticated;
+
+-- Random per-project salt for IP hashing, generated once at install.
+create table if not exists app_secrets (salt text not null);
+insert into app_secrets (salt)
+  select gen_random_uuid()::text where not exists (select 1 from app_secrets);
+alter table app_secrets enable row level security;
+revoke all on table app_secrets from anon, authenticated;
 
 -- Lower bound of the Wilson score interval (z = 1.96): win-rate ranking that
 -- penalizes small samples, so 3-0 does not outrank 40-10.
@@ -40,11 +52,12 @@ $$;
 create or replace function record_vote(
   p_format text, p_card text, p_winner jsonb, p_loser jsonb
 ) returns jsonb
-language plpgsql volatile security definer set search_path = public
+language plpgsql volatile security definer set search_path = public, extensions
 as $$
 declare
   wid uuid; lid uuid;
   agree int; disagree int; card_total int;
+  hdrs jsonb; ip text; vhash text;
 begin
   if p_format not in ('standard','pioneer','modern','legacy','vintage','commander') then
     raise exception 'unknown format';
@@ -62,14 +75,38 @@ begin
     raise exception 'art must be a Scryfall image';
   end if;
 
+  -- Rate limiting by salted IP hash. PostgREST exposes request headers;
+  -- when absent (e.g. running in the SQL editor) the throttle is skipped.
+  hdrs := nullif(current_setting('request.headers', true), '')::jsonb;
+  if hdrs is not null then
+    ip := trim(coalesce(hdrs->>'cf-connecting-ip', hdrs->>'x-real-ip',
+                        split_part(hdrs->>'x-forwarded-for', ',', 1)));
+  end if;
+  if ip is not null and ip <> '' then
+    vhash := encode(digest((select salt from app_secrets limit 1) || ip, 'sha256'), 'hex');
+    if (select count(*) from votes where voter_hash = vhash
+        and created_at > now() - interval '1 minute') >= 15 then
+      raise exception 'Easy there, planeswalker — voting too fast. Try again in a minute.';
+    end if;
+    if (select count(*) from votes where voter_hash = vhash
+        and created_at > now() - interval '1 hour') >= 250 then
+      raise exception 'Hourly vote limit reached — come back in a bit.';
+    end if;
+    if (select count(*) from votes where voter_hash = vhash
+        and winner_id in (wid, lid) and loser_id in (wid, lid)
+        and created_at > now() - interval '1 day') >= 3 then
+      raise exception 'You have already judged this pairing today.';
+    end if;
+  end if;
+
   insert into votes (format, card_name, winner_id, loser_id,
                      winner_artist, winner_set, winner_art,
-                     loser_artist, loser_set, loser_art)
+                     loser_artist, loser_set, loser_art, voter_hash)
   values (p_format, p_card, wid, lid,
           left(p_winner->>'artist', 120), left(p_winner->>'set_name', 120),
           left(p_winner->>'art', 300),
           left(p_loser->>'artist', 120), left(p_loser->>'set_name', 120),
-          left(p_loser->>'art', 300));
+          left(p_loser->>'art', 300), vhash);
 
   select count(*) into agree
     from votes where card_name = p_card and winner_id = wid and loser_id = lid;
