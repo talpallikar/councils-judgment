@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MTG Art Duel</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --hair: rgba(255,255,255,0.10);
+    --blue: #3987e5;
+    --orange: #d95926;
+    --gold: #d4b465;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+    --serif: Georgia, "Times New Roman", serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: var(--sans); line-height: 1.5;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  a { color: var(--blue); text-decoration: none; }
+  button { font: inherit; cursor: pointer; }
+
+  header {
+    display: flex; align-items: center; gap: 24px;
+    padding: 14px 24px; border-bottom: 1px solid var(--grid);
+  }
+  .brand { font-family: var(--serif); font-size: 22px; letter-spacing: 0.04em; color: var(--gold); }
+  .brand small { color: var(--muted); font-family: var(--sans); font-size: 12px; letter-spacing: 0.1em; margin-left: 8px; }
+  nav { display: flex; gap: 4px; margin-left: auto; }
+  nav button {
+    background: none; border: 1px solid transparent; color: var(--ink-2);
+    padding: 6px 14px; border-radius: 8px; font-size: 14px;
+  }
+  nav button:hover { color: var(--ink); }
+  nav button.active { background: var(--surface); border-color: var(--hair); color: var(--ink); }
+  .fmt-pill {
+    font-size: 13px; color: var(--ink-2); background: var(--surface);
+    border: 1px solid var(--hair); border-radius: 999px; padding: 4px 12px;
+  }
+  .banner {
+    background: #2a2410; color: #e8d9a0; border-bottom: 1px solid #4a3f1d;
+    font-size: 12.5px; padding: 7px 24px; text-align: center;
+  }
+  .banner a { color: #e8d9a0; text-decoration: underline; }
+
+  main { flex: 1; width: 100%; max-width: 1060px; margin: 0 auto; padding: 28px 24px 48px; }
+  .hidden { display: none !important; }
+
+  /* ---------- home ---------- */
+  .hero { text-align: center; margin: 24px 0 8px; }
+  .hero h1 { font-family: var(--serif); font-size: 40px; font-weight: 500; }
+  .hero p { color: var(--ink-2); margin-top: 8px; max-width: 560px; margin-inline: auto; }
+  .hero .count { color: var(--muted); font-size: 13px; margin-top: 12px; min-height: 20px; }
+  .hero .count b { color: var(--ink); font-weight: 600; }
+  .fmt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 32px; }
+  .fmt-tile {
+    background: var(--surface); border: 1px solid var(--hair); border-radius: 12px;
+    padding: 18px 18px 14px; text-align: left; color: var(--ink);
+    transition: border-color .15s, transform .15s;
+  }
+  .fmt-tile:not(:disabled):hover { border-color: var(--gold); transform: translateY(-2px); }
+  .fmt-tile:disabled { opacity: 0.45; cursor: default; }
+  .fmt-tile .name { font-family: var(--serif); font-size: 20px; }
+  .fmt-tile .meta { color: var(--muted); font-size: 12px; margin-top: 6px; }
+
+  /* ---------- duel ---------- */
+  .duel-head { text-align: center; margin-bottom: 20px; }
+  .duel-head .prompt { color: var(--muted); font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; }
+  .duel-head h2 { font-family: var(--serif); font-size: 32px; font-weight: 500; margin-top: 4px; }
+  .duel-head .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .arena { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .option { position: relative; }
+  .option .art-btn {
+    display: block; width: 100%; padding: 0; border: 1px solid var(--hair);
+    border-radius: 12px; overflow: hidden; background: var(--surface);
+  }
+  .option img.art { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; transition: transform .2s ease; }
+  .state-open .art-btn:hover { border-color: var(--gold); }
+  .state-open .art-btn:hover img.art { transform: scale(1.02); }
+  .option .reveal {
+    background: var(--surface); border: 1px solid var(--hair); border-top: none;
+    border-radius: 0 0 12px 12px; padding: 10px 12px; margin-top: -12px;
+    padding-top: 20px; visibility: hidden;
+  }
+  .state-done .reveal { visibility: visible; }
+  .state-done .art-btn { cursor: zoom-in; }
+  .option.picked .art-btn { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+  .option.unpicked img.art { opacity: 0.75; }
+  .reveal .who { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; }
+  .reveal .who .artist { color: var(--ink); }
+  .reveal .who .set { color: var(--muted); font-size: 12px; text-align: right; }
+  .reveal .pickline { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 13px; }
+  .reveal .pct { font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .reveal .youbadge { color: var(--gold); font-size: 12px; }
+  .bar { height: 6px; background: var(--grid); border-radius: 4px; margin-top: 6px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--blue); border-radius: 4px; transition: width .5s ease; }
+  .option.picked .bar > i { background: var(--gold); }
+  .duel-actions { display: flex; justify-content: center; align-items: center; gap: 18px; margin-top: 22px; min-height: 40px; }
+  .duel-actions .ghost { background: none; border: none; color: var(--muted); font-size: 13px; }
+  .duel-actions .ghost:hover { color: var(--ink-2); }
+  .next-btn {
+    background: var(--gold); color: #1a1505; border: none; border-radius: 8px;
+    padding: 9px 26px; font-weight: 600; font-size: 14px;
+  }
+  .next-btn:hover { filter: brightness(1.08); }
+  .agree-note { text-align: center; color: var(--ink-2); font-size: 13px; margin-top: 14px; min-height: 20px; }
+  .agree-note b { color: var(--ink); }
+  .loading { text-align: center; color: var(--muted); padding: 60px 0; font-size: 14px; }
+  .kbd-hint { text-align: center; color: var(--muted); font-size: 11px; margin-top: 18px; }
+  .kbd-hint kbd { border: 1px solid var(--grid); border-radius: 4px; padding: 0 5px; font-family: var(--sans); }
+
+  /* ---------- stats ---------- */
+  .stats-head { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  .stats-head h2 { font-family: var(--serif); font-size: 26px; font-weight: 500; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+  .chips button {
+    background: none; border: 1px solid var(--grid); color: var(--ink-2);
+    border-radius: 999px; padding: 4px 12px; font-size: 12.5px;
+  }
+  .chips button.active { background: var(--surface); border-color: var(--gold); color: var(--ink); }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 26px; }
+  .kpi { background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; padding: 16px 18px; }
+  .kpi .v { font-size: 34px; font-weight: 600; line-height: 1.15; }
+  .kpi .k { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .panel { background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; padding: 18px; margin-bottom: 22px; }
+  .panel h3 { font-size: 15px; font-weight: 600; }
+  .panel .note { color: var(--muted); font-size: 12px; margin-top: 2px; margin-bottom: 12px; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--grid); }
+  .row:first-of-type { border-top: none; }
+  .rank { color: var(--muted); font-size: 12.5px; width: 20px; text-align: right; font-variant-numeric: tabular-nums; }
+  .thumb { width: 64px; height: 48px; object-fit: cover; border-radius: 6px; background: var(--grid); flex: none; }
+  .row .info { flex: 1; min-width: 0; }
+  .row .title { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .subtitle { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .metric { width: 190px; flex: none; }
+  .row .metric .lbl { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .row .metric .lbl span:last-child { color: var(--muted); }
+  .pairbar { display: flex; height: 6px; border-radius: 4px; overflow: hidden; margin-top: 6px; gap: 2px; }
+  .pairbar i { display: block; height: 100%; }
+  .pairbar .pa { background: var(--blue); border-radius: 4px 0 0 4px; }
+  .pairbar .pb { background: var(--orange); border-radius: 0 4px 4px 0; }
+  .versus { display: flex; gap: 6px; flex: none; }
+  .empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
+
+  /* ---------- modal ---------- */
+  .modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    display: flex; align-items: center; justify-content: center; z-index: 20; cursor: zoom-out;
+  }
+  .modal img { max-height: 88vh; max-width: 92vw; border-radius: 16px; }
+
+  footer {
+    border-top: 1px solid var(--grid); color: var(--muted);
+    font-size: 11.5px; padding: 14px 24px; text-align: center; line-height: 1.7;
+  }
+  footer a { color: var(--muted); text-decoration: underline; }
+
+  @media (max-width: 720px) {
+    .fmt-grid, .kpis { grid-template-columns: 1fr; }
+    .arena { grid-template-columns: 1fr; }
+    .row .metric { width: 120px; }
+    header { flex-wrap: wrap; gap: 10px; }
+    nav { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Art Duel <small>MTG ART, HEAD TO HEAD</small></div>
+  <span id="fmt-pill" class="fmt-pill hidden"></span>
+  <nav>
+    <button id="nav-play" class="active">Play</button>
+    <button id="nav-stats">Stats</button>
+  </nav>
+</header>
+<div id="solo-banner" class="banner hidden">
+  Solo mode — votes are stored in this browser only. The site owner can enable
+  community stats by connecting Supabase (see the README).
+</div>
+
+<main>
+  <section id="view-home">
+    <div class="hero">
+      <h1>Which art wins?</h1>
+      <p>Two printings of the same Magic card, side by side. Pick the art you
+         prefer and see how everyone voted. Choose a format to start.</p>
+      <div class="count" id="home-count"></div>
+    </div>
+    <div class="fmt-grid" id="fmt-grid"></div>
+  </section>
+
+  <section id="view-duel" class="hidden"></section>
+
+  <section id="view-stats" class="hidden">
+    <div class="stats-head">
+      <h2 id="stats-title">Community rankings</h2>
+      <div class="chips" id="stat-chips"></div>
+    </div>
+    <div id="stats-body" class="loading">Loading…</div>
+  </section>
+</main>
+
+<footer>
+  Card data and images courtesy of <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>.
+  Staple lists refresh weekly from <a href="https://mtgtop8.com" target="_blank" rel="noopener">MTGTop8</a>
+  and <a href="https://edhrec.com" target="_blank" rel="noopener">EDHREC</a>.
+  <span id="foot-updated"></span><br>
+  Unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards.
+  Card images &copy; Wizards of the Coast.
+</footer>
+
+<script src="config.js"></script>
+<script>
+"use strict";
+
+const CFG = window.MTGART_CONFIG || {};
+const REMOTE = Boolean(CFG.supabaseUrl && CFG.supabaseAnonKey);
+const FORMAT_KEYS = ["standard", "pioneer", "modern", "legacy", "vintage", "commander"];
+
+const $ = (sel, el = document) => el.querySelector(sel);
+const esc = s => String(s ?? "").replace(/[&<>"']/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const state = {
+  view: "home",
+  format: localStorage.getItem("mtgart.format") || null,
+  staples: null,   // parsed staples.json
+  matchup: null,
+  next: null,
+  voted: false,
+  statFormat: "all",
+};
+
+/* ================= Scryfall (called directly from the browser) ========= */
+
+let lastScry = 0;
+async function scry(url) {
+  const wait = 120 - (performance.now() - lastScry);
+  if (wait > 0) await new Promise(r => setTimeout(r, wait));
+  lastScry = performance.now();
+  const r = await fetch(url);
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error("Scryfall error " + r.status);
+  return r.json();
+}
+
+function extractArt(card, wanted) {
+  let face = null;
+  if (card.card_faces) {
+    const lw = wanted.toLowerCase();
+    face = card.card_faces.find(f => (f.name || "").toLowerCase() === lw)
+        || card.card_faces[0];
+  }
+  const src = (face && face.image_uris) ? face : card;
+  const imgs = src.image_uris || {};
+  const ill = (face && face.illustration_id) || card.illustration_id;
+  if (!ill || !imgs.art_crop || !imgs.normal) return null;
+  return {
+    id: ill,
+    artist: (face && face.artist) || card.artist || null,
+    set_name: card.set_name || null,
+    released_at: card.released_at || null,
+    art: imgs.art_crop,
+    full: imgs.normal,
+  };
+}
+
+async function fetchPrints(name) {
+  const params = new URLSearchParams({
+    q: `!"${name}" -is:digital`,
+    unique: "art", order: "released", dir: "asc", include_extras: "true",
+  });
+  let data = await scry("https://api.scryfall.com/cards/search?" + params);
+  const prints = [], seen = new Set();
+  let pages = 0;
+  while (data) {
+    for (const card of data.data || []) {
+      const e = extractArt(card, name);
+      if (e && !seen.has(e.id)) { seen.add(e.id); prints.push(e); }
+    }
+    pages++;
+    if (data.has_more && pages < 3) data = await scry(data.next_page);
+    else break;
+  }
+  return prints;
+}
+
+const CACHE_TTL = 7 * 86400 * 1000;
+function cacheKey(name) { return "mtgart.c." + name.toLowerCase(); }
+
+async function getPrints(name) {
+  try {
+    const hit = JSON.parse(localStorage.getItem(cacheKey(name)));
+    if (hit && Date.now() - hit.t < CACHE_TTL) return hit.p;
+  } catch (e) { /* corrupt entry, refetch */ }
+  const prints = await fetchPrints(name);
+  try {
+    localStorage.setItem(cacheKey(name), JSON.stringify({ t: Date.now(), p: prints }));
+  } catch (e) {
+    // quota: drop our whole art cache and retry once
+    for (const k of Object.keys(localStorage))
+      if (k.startsWith("mtgart.c.")) localStorage.removeItem(k);
+    try { localStorage.setItem(cacheKey(name), JSON.stringify({ t: Date.now(), p: prints })); }
+    catch (e2) { /* give up on caching */ }
+  }
+  return prints;
+}
+
+/* ================= votes backend: Supabase RPC or solo/local =========== */
+
+async function rpc(fn, args) {
+  const r = await fetch(CFG.supabaseUrl + "/rest/v1/rpc/" + fn, {
+    method: "POST",
+    headers: {
+      "apikey": CFG.supabaseAnonKey,
+      "Authorization": "Bearer " + CFG.supabaseAnonKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(args || {}),
+  });
+  if (!r.ok) {
+    let msg = r.statusText;
+    try { msg = (await r.json()).message || msg; } catch (e) {}
+    throw new Error(msg);
+  }
+  return r.json();
+}
+
+function localVotes() {
+  try { return JSON.parse(localStorage.getItem("mtgart.votes")) || []; }
+  catch (e) { return []; }
+}
+
+function wilson(wins, games) {
+  if (!games) return 0;
+  const z = 1.959964, z2 = z * z, p = wins / games;
+  return (p + z2 / (2 * games) - z * Math.sqrt((p * (1 - p) + z2 / (4 * games)) / games))
+       / (1 + z2 / games);
+}
+
+async function recordVote(m, winner, loser) {
+  const w = { id: winner.id, artist: winner.artist, set_name: winner.set_name, art: winner.art };
+  const l = { id: loser.id, artist: loser.artist, set_name: loser.set_name, art: loser.art };
+  if (REMOTE) {
+    return rpc("record_vote", { p_format: m.format, p_card: m.card, p_winner: w, p_loser: l });
+  }
+  const votes = localVotes();
+  votes.push({ f: m.format, c: m.card, w, l, t: Date.now() });
+  localStorage.setItem("mtgart.votes", JSON.stringify(votes));
+  const agree = votes.filter(v => v.c === m.card && v.w.id === w.id && v.l.id === l.id).length;
+  const disagree = votes.filter(v => v.c === m.card && v.w.id === l.id && v.l.id === w.id).length;
+  return {
+    ok: true,
+    pair: { with_you: agree, against_you: disagree,
+            agree_pct: Math.round(100 * agree / (agree + disagree)) },
+    card_votes: votes.filter(v => v.c === m.card).length,
+  };
+}
+
+function localStats(fmt) {
+  const votes = localVotes().filter(v => fmt === "all" || v.f === fmt);
+  const total = votes.length;
+  const minGames = total >= 200 ? 5 : total >= 60 ? 3 : 1;
+  const perArt = new Map(), perCard = new Map(), pairs = new Map(), byFormat = {};
+  const touch = (side, isWin) => {
+    const e = perArt.get(side.id) ||
+      { id: side.id, card_name: null, artist: side.artist, set_name: side.set_name,
+        art: side.art, wins: 0, losses: 0 };
+    if (isWin) e.wins++; else e.losses++;
+    perArt.set(side.id, e);
+    return e;
+  };
+  for (const v of votes) {
+    touch(v.w, true).card_name = v.c;
+    touch(v.l, false).card_name = v.c;
+    perCard.set(v.c, (perCard.get(v.c) || 0) + 1);
+    byFormat[v.f] = (byFormat[v.f] || 0) + 1;
+    const [a, b] = [v.w.id, v.l.id].sort();
+    const key = v.c + "|" + a + "|" + b;
+    const p = pairs.get(key) || { card: v.c, a, b, na: 0, nb: 0 };
+    if (v.w.id === a) p.na++; else p.nb++;
+    pairs.set(key, p);
+  }
+  const ranked = [...perArt.values()].map(e => ({
+    ...e, games: e.wins + e.losses,
+    win_rate: Math.round(100 * e.wins / (e.wins + e.losses)),
+    score: wilson(e.wins, e.wins + e.losses),
+  }));
+  const pairRows = [...pairs.values()]
+    .map(p => ({ ...p, n: p.na + p.nb }))
+    .filter(p => p.n >= Math.max(3, minGames))
+    .map(p => {
+      const ma = perArt.get(p.a) || {}, mb = perArt.get(p.b) || {};
+      return {
+        card_name: p.card, n: p.n,
+        a: { artist: ma.artist, set_name: ma.set_name, art: ma.art,
+             votes: p.na, pct: Math.round(100 * p.na / p.n) },
+        b: { artist: mb.artist, set_name: mb.set_name, art: mb.art,
+             votes: p.nb, pct: Math.round(100 * p.nb / p.n) },
+      };
+    });
+  const artists = new Map();
+  for (const e of ranked) {
+    if (!e.artist) continue;
+    const a = artists.get(e.artist) ||
+      { artist: e.artist, arts: 0, wins: 0, losses: 0 };
+    a.arts++; a.wins += e.wins; a.losses += e.losses;
+    artists.set(e.artist, a);
+  }
+  return {
+    format: fmt,
+    min_games: minGames,
+    totals: { votes: total, cards: perCard.size, arts: perArt.size, by_format: byFormat },
+    top_arts: ranked.filter(e => e.games >= minGames)
+      .sort((x, y) => y.score - x.score || y.games - x.games).slice(0, 12),
+    closest: [...pairRows]
+      .sort((x, y) => Math.abs(x.a.votes / x.n - 0.5) - Math.abs(y.a.votes / y.n - 0.5) || y.n - x.n)
+      .slice(0, 8),
+    blowouts: pairRows.filter(p => Math.max(p.a.pct, p.b.pct) >= 65)
+      .sort((x, y) => Math.max(y.a.pct, y.b.pct) - Math.max(x.a.pct, x.b.pct) || y.n - x.n)
+      .slice(0, 8),
+    top_artists: [...artists.values()]
+      .map(a => ({ ...a, games: a.wins + a.losses,
+                   win_rate: Math.round(100 * a.wins / (a.wins + a.losses)),
+                   score: wilson(a.wins, a.wins + a.losses) }))
+      .filter(a => a.games >= Math.max(5, minGames))
+      .sort((x, y) => y.score - x.score).slice(0, 10),
+    most_voted: [...perCard.entries()].sort((x, y) => y[1] - x[1]).slice(0, 10)
+      .map(([card_name, votes]) => ({ card_name, votes })),
+  };
+}
+
+const getStats = fmt => REMOTE ? rpc("get_stats", { fmt }) : Promise.resolve(localStats(fmt));
+
+/* ================= view switching ================= */
+
+function show(view) {
+  state.view = view;
+  for (const v of ["home", "duel", "stats"])
+    $("#view-" + v).classList.toggle("hidden", v !== view);
+  $("#nav-play").classList.toggle("active", view !== "stats");
+  $("#nav-stats").classList.toggle("active", view === "stats");
+  const pill = $("#fmt-pill");
+  const label = fmtLabel(state.format);
+  pill.classList.toggle("hidden", view !== "duel" || !label);
+  if (label) pill.textContent = label;
+}
+
+const fmtEntry = key =>
+  (state.staples ? state.staples.formats.find(f => f.key === key) : null) || null;
+const fmtLabel = key => (fmtEntry(key) || {}).label || null;
+
+$("#nav-play").onclick = () => state.format ? startDuel() : show("home");
+$("#nav-stats").onclick = () => { show("stats"); loadStats(); };
+
+/* ================= home ================= */
+
+async function loadHome() {
+  const r = await fetch("staples.json");
+  if (!r.ok) throw new Error("staples.json missing");
+  state.staples = await r.json();
+  const grid = $("#fmt-grid");
+  grid.innerHTML = "";
+  for (const f of state.staples.formats) {
+    const b = document.createElement("button");
+    b.className = "fmt-tile";
+    b.disabled = !f.names.length;
+    b.innerHTML = `<div class="name">${esc(f.label)}</div>
+      <div class="meta">${f.names.length
+        ? f.names.length + " staples &middot; " + esc(f.source)
+        : "temporarily unavailable"}</div>`;
+    b.onclick = () => setFormat(f.key);
+    grid.appendChild(b);
+  }
+  const gen = state.staples.generated_at;
+  if (gen) {
+    const days = Math.max(0, Math.round((Date.now() / 1000 - gen) / 86400));
+    $("#foot-updated").textContent =
+      ` Staples last updated ${days === 0 ? "today" : days + "d ago"}.`;
+  }
+  $("#solo-banner").classList.toggle("hidden", REMOTE);
+  getStats("all").then(s => {
+    $("#home-count").innerHTML = s.totals.votes
+      ? `<b>${s.totals.votes.toLocaleString()}</b> votes cast so far`
+      : "Be the first to vote!";
+  }).catch(() => { $("#home-count").textContent = ""; });
+}
+
+function setFormat(key) {
+  state.format = key;
+  localStorage.setItem("mtgart.format", key);
+  state.next = null;
+  startDuel();
+}
+
+/* ================= duel ================= */
+
+async function newMatchup() {
+  const entry = fmtEntry(state.format);
+  if (!entry || !entry.names.length) throw new Error("no staple list");
+  const names = [...entry.names];
+  for (let tries = 0; tries < 10 && names.length; tries++) {
+    const name = names.splice(Math.floor(Math.random() * names.length), 1)[0];
+    const prints = await getPrints(name);
+    if (prints.length >= 2) {
+      const i = Math.floor(Math.random() * prints.length);
+      let j = Math.floor(Math.random() * (prints.length - 1));
+      if (j >= i) j++;
+      const m = { format: state.format, card: name,
+                  total_arts: prints.length, arts: [prints[i], prints[j]] };
+      m.arts.forEach(a => { const img = new Image(); img.src = a.art; });
+      return m;
+    }
+  }
+  throw new Error("could not find a card with two arts");
+}
+
+async function startDuel() {
+  show("duel");
+  const root = $("#view-duel");
+  root.innerHTML = `<div class="loading">Summoning two arts&hellip;</div>`;
+  try {
+    const m = state.next ? await state.next : await newMatchup();
+    state.next = newMatchup().catch(() => null);   // preload the one after
+    renderDuel(m);
+  } catch (e) {
+    root.innerHTML = `<div class="loading">Could not load a matchup (${esc(e.message)}).
+      <br><br><button class="next-btn" id="retry-btn">Try again</button></div>`;
+    $("#retry-btn").onclick = () => startDuel();
+  }
+}
+
+function renderDuel(m) {
+  state.matchup = m;
+  state.voted = false;
+  const root = $("#view-duel");
+  root.innerHTML = `
+    <div class="duel-head">
+      <div class="prompt">Which art do you prefer?</div>
+      <h2>${esc(m.card)}</h2>
+      <div class="sub">${m.total_arts} known arts &middot; ${esc(fmtLabel(m.format) || "")}</div>
+    </div>
+    <div class="arena state-open" id="arena">
+      ${m.arts.map((a, i) => `
+        <figure class="option" data-i="${i}">
+          <button class="art-btn" aria-label="Prefer art ${i + 1}">
+            <img class="art" src="${esc(a.art)}" alt="Art option ${i + 1} for ${esc(m.card)}">
+          </button>
+          <figcaption class="reveal">
+            <div class="who"><span class="artist"></span><span class="set"></span></div>
+            <div class="pickline"><span class="pct"></span><span class="youbadge"></span></div>
+            <div class="bar"><i></i></div>
+          </figcaption>
+        </figure>`).join("")}
+    </div>
+    <div class="agree-note" id="agree-note"></div>
+    <div class="duel-actions" id="duel-actions">
+      <button class="ghost" id="skip-btn">Skip this card</button>
+      <button class="ghost" id="change-btn">Change format</button>
+    </div>
+    <div class="kbd-hint"><kbd>&larr;</kbd> <kbd>&rarr;</kbd> to vote &middot; <kbd>S</kbd> skip &middot; <kbd>Enter</kbd> next</div>`;
+  $("#skip-btn").onclick = () => startDuel();
+  $("#change-btn").onclick = () => show("home");
+  root.querySelectorAll(".option .art-btn").forEach((btn, i) => {
+    btn.onclick = () => state.voted ? openModal(m.arts[i].full) : castVote(i);
+  });
+}
+
+async function castVote(i) {
+  if (state.voted) return;
+  state.voted = true;
+  const m = state.matchup;
+  const winner = m.arts[i], loser = m.arts[1 - i];
+  const arena = $("#arena");
+  arena.classList.remove("state-open");
+  arena.classList.add("state-done");
+
+  let res = null;
+  try {
+    res = await recordVote(m, winner, loser);
+  } catch (e) {
+    $("#agree-note").textContent = "Vote failed to save (" + e.message + ")";
+  }
+
+  arena.querySelectorAll(".option").forEach(opt => {
+    const idx = +opt.dataset.i;
+    const a = m.arts[idx];
+    const picked = idx === i;
+    opt.classList.add(picked ? "picked" : "unpicked");
+    $(".artist", opt).textContent = a.artist || "Unknown artist";
+    $(".set", opt).textContent =
+      (a.set_name || "") + (a.released_at ? " · " + a.released_at.slice(0, 4) : "");
+    if (res) {
+      const pct = picked ? res.pair.agree_pct : 100 - res.pair.agree_pct;
+      $(".pct", opt).textContent = pct + "% of votes";
+      requestAnimationFrame(() => { $(".bar i", opt).style.width = pct + "%"; });
+    }
+    if (picked) $(".youbadge", opt).textContent = "✦ your pick";
+  });
+
+  if (res) {
+    const n = res.pair.with_you + res.pair.against_you;
+    $("#agree-note").innerHTML = n > 1
+      ? `<b>${res.pair.agree_pct}%</b> of ${n} votes on this pairing agree with you
+         &middot; ${res.card_votes} total votes on ${esc(m.card)}`
+      : `You're the first to vote on this pairing.`;
+  }
+  const next = document.createElement("button");
+  next.className = "next-btn";
+  next.textContent = "Next duel →";
+  next.onclick = () => startDuel();
+  $("#duel-actions").prepend(next);
+  next.focus();
+}
+
+/* ================= modal ================= */
+
+function openModal(src) {
+  const div = document.createElement("div");
+  div.className = "modal";
+  div.innerHTML = `<img src="${esc(src)}" alt="Full card">`;
+  div.onclick = () => div.remove();
+  document.body.appendChild(div);
+}
+
+/* ================= stats ================= */
+
+function statChips() {
+  const wrap = $("#stat-chips");
+  const all = [{ key: "all", label: "All formats" },
+               ...state.staples.formats.map(f => ({ key: f.key, label: f.label }))];
+  wrap.innerHTML = "";
+  for (const f of all) {
+    const b = document.createElement("button");
+    b.textContent = f.label;
+    b.classList.toggle("active", state.statFormat === f.key);
+    b.onclick = () => { state.statFormat = f.key; statChips(); loadStats(); };
+    wrap.appendChild(b);
+  }
+}
+
+const artRow = (e, i) => `
+  <div class="row">
+    <span class="rank">${i + 1}</span>
+    <img class="thumb" src="${esc(e.art)}" alt="" loading="lazy">
+    <div class="info">
+      <div class="title">${esc(e.card_name)}</div>
+      <div class="subtitle">${esc(e.artist || "")} &middot; ${esc(e.set_name || "")}</div>
+    </div>
+    <div class="metric">
+      <div class="lbl"><span>${e.win_rate}% wins</span><span>${e.wins}&ndash;${e.losses}</span></div>
+      <div class="bar"><i style="width:${e.win_rate}%"></i></div>
+    </div>
+  </div>`;
+
+const pairRow = e => `
+  <div class="row">
+    <div class="versus">
+      <img class="thumb" src="${esc(e.a.art)}" alt="" loading="lazy">
+      <img class="thumb" src="${esc(e.b.art)}" alt="" loading="lazy">
+    </div>
+    <div class="info">
+      <div class="title">${esc(e.card_name)}</div>
+      <div class="subtitle">${esc(e.a.artist || "?")} vs ${esc(e.b.artist || "?")}</div>
+    </div>
+    <div class="metric">
+      <div class="lbl"><span>${e.a.pct}% / ${e.b.pct}%</span><span>${e.n} votes</span></div>
+      <div class="pairbar">
+        <i class="pa" style="width:${e.a.pct}%"></i><i class="pb" style="width:${e.b.pct}%"></i>
+      </div>
+    </div>
+  </div>`;
+
+async function loadStats() {
+  $("#stats-title").textContent = REMOTE ? "Community rankings" : "Your rankings (solo mode)";
+  statChips();
+  const body = $("#stats-body");
+  body.className = "loading";
+  body.textContent = "Loading…";
+  let s;
+  try {
+    s = await getStats(state.statFormat);
+  } catch (e) {
+    body.textContent = "Could not load stats (" + e.message + ")";
+    return;
+  }
+  body.className = "";
+  if (!s.totals.votes) {
+    body.innerHTML = `<div class="panel"><div class="empty">No votes yet${
+      state.statFormat === "all" ? "" : " in this format"} — go play some duels!</div></div>`;
+    return;
+  }
+  const t = s.totals;
+  body.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="v">${t.votes.toLocaleString()}</div><div class="k">votes cast</div></div>
+      <div class="kpi"><div class="v">${t.cards.toLocaleString()}</div><div class="k">cards contested</div></div>
+      <div class="kpi"><div class="v">${t.arts.toLocaleString()}</div><div class="k">arts ranked</div></div>
+    </div>
+    <div class="panel">
+      <h3>Top-ranked arts</h3>
+      <div class="note">Ranked by Wilson score (win rate adjusted for sample size), minimum ${s.min_games} duel${s.min_games > 1 ? "s" : ""}.</div>
+      ${s.top_arts.length ? s.top_arts.map(artRow).join("") : `<div class="empty">Not enough data yet.</div>`}
+    </div>
+    <div class="panel">
+      <h3>Closest rivalries</h3>
+      <div class="note">Pairings the voters can't agree on.</div>
+      ${s.closest.length ? s.closest.map(pairRow).join("") : `<div class="empty">Not enough data yet.</div>`}
+    </div>
+    <div class="panel">
+      <h3>Biggest blowouts</h3>
+      <div class="note">Pairings with a runaway favorite (&ge;65%).</div>
+      ${s.blowouts.length ? s.blowouts.map(pairRow).join("") : `<div class="empty">Not enough data yet.</div>`}
+    </div>
+    <div class="panel">
+      <h3>Top artists</h3>
+      <div class="note">By win record across all their duelling arts.</div>
+      ${s.top_artists.length ? s.top_artists.map((a, i) => `
+        <div class="row">
+          <span class="rank">${i + 1}</span>
+          <div class="info">
+            <div class="title">${esc(a.artist)}</div>
+            <div class="subtitle">${a.arts} art${a.arts > 1 ? "s" : ""} in play</div>
+          </div>
+          <div class="metric">
+            <div class="lbl"><span>${a.win_rate}% wins</span><span>${a.wins}&ndash;${a.losses}</span></div>
+            <div class="bar"><i style="width:${a.win_rate}%"></i></div>
+          </div>
+        </div>`).join("") : `<div class="empty">Not enough data yet.</div>`}
+    </div>
+    <div class="panel">
+      <h3>Most voted cards</h3>
+      ${s.most_voted.map((c, i) => `
+        <div class="row">
+          <span class="rank">${i + 1}</span>
+          <div class="info"><div class="title">${esc(c.card_name)}</div></div>
+          <div class="metric">
+            <div class="lbl"><span>${c.votes} vote${c.votes > 1 ? "s" : ""}</span><span></span></div>
+            <div class="bar"><i style="width:${Math.round(100 * c.votes / s.most_voted[0].votes)}%"></i></div>
+          </div>
+        </div>`).join("")}
+    </div>`;
+}
+
+/* ================= keyboard ================= */
+
+document.addEventListener("keydown", ev => {
+  if (state.view !== "duel" || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+  if (!state.voted && ev.key === "ArrowLeft") castVote(0);
+  else if (!state.voted && ev.key === "ArrowRight") castVote(1);
+  else if (ev.key === "s" || ev.key === "S") startDuel();
+  else if (state.voted && ev.key === "Enter") startDuel();
+});
+
+/* ================= boot ================= */
+
+loadHome().then(() => {
+  if (state.format && fmtLabel(state.format)) startDuel();
+  else show("home");
+}).catch(e => {
+  $("#home-count").textContent = "Failed to load: " + e.message;
+});
+</script>
+</body>
+</html>

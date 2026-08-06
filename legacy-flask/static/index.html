@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MTG Art Duel</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --hair: rgba(255,255,255,0.10);
+    --blue: #3987e5;
+    --orange: #d95926;
+    --gold: #d4b465;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+    --serif: Georgia, "Times New Roman", serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: var(--sans); line-height: 1.5;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  a { color: var(--blue); text-decoration: none; }
+  button { font: inherit; cursor: pointer; }
+
+  header {
+    display: flex; align-items: center; gap: 24px;
+    padding: 14px 24px; border-bottom: 1px solid var(--grid);
+  }
+  .brand { font-family: var(--serif); font-size: 22px; letter-spacing: 0.04em; color: var(--gold); }
+  .brand small { color: var(--muted); font-family: var(--sans); font-size: 12px; letter-spacing: 0.1em; margin-left: 8px; }
+  nav { display: flex; gap: 4px; margin-left: auto; }
+  nav button {
+    background: none; border: 1px solid transparent; color: var(--ink-2);
+    padding: 6px 14px; border-radius: 8px; font-size: 14px;
+  }
+  nav button:hover { color: var(--ink); }
+  nav button.active { background: var(--surface); border-color: var(--hair); color: var(--ink); }
+  .fmt-pill {
+    font-size: 13px; color: var(--ink-2); background: var(--surface);
+    border: 1px solid var(--hair); border-radius: 999px; padding: 4px 12px;
+  }
+
+  main { flex: 1; width: 100%; max-width: 1060px; margin: 0 auto; padding: 28px 24px 48px; }
+  .hidden { display: none !important; }
+
+  /* ---------- home ---------- */
+  .hero { text-align: center; margin: 24px 0 8px; }
+  .hero h1 { font-family: var(--serif); font-size: 40px; font-weight: 500; }
+  .hero p { color: var(--ink-2); margin-top: 8px; max-width: 560px; margin-inline: auto; }
+  .hero .count { color: var(--muted); font-size: 13px; margin-top: 12px; }
+  .hero .count b { color: var(--ink); font-weight: 600; }
+  .fmt-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 32px;
+  }
+  .fmt-tile {
+    background: var(--surface); border: 1px solid var(--hair); border-radius: 12px;
+    padding: 18px 18px 14px; text-align: left; color: var(--ink);
+    transition: border-color .15s, transform .15s;
+  }
+  .fmt-tile:hover { border-color: var(--gold); transform: translateY(-2px); }
+  .fmt-tile .name { font-family: var(--serif); font-size: 20px; }
+  .fmt-tile .meta { color: var(--muted); font-size: 12px; margin-top: 6px; }
+
+  /* ---------- duel ---------- */
+  .duel-head { text-align: center; margin-bottom: 20px; }
+  .duel-head .prompt { color: var(--muted); font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; }
+  .duel-head h2 { font-family: var(--serif); font-size: 32px; font-weight: 500; margin-top: 4px; }
+  .duel-head .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .arena { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .option { position: relative; }
+  .option .art-btn {
+    display: block; width: 100%; padding: 0; border: 1px solid var(--hair);
+    border-radius: 12px; overflow: hidden; background: var(--surface);
+  }
+  .option img.art { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+  .state-open .art-btn:hover { border-color: var(--gold); }
+  .state-open .art-btn:hover img.art { transform: scale(1.02); }
+  .option img.art { transition: transform .2s ease; }
+  .option .reveal {
+    background: var(--surface); border: 1px solid var(--hair); border-top: none;
+    border-radius: 0 0 12px 12px; padding: 10px 12px; margin-top: -12px;
+    padding-top: 20px; visibility: hidden;
+  }
+  .state-done .reveal { visibility: visible; }
+  .state-done .art-btn { cursor: zoom-in; }
+  .option.picked .art-btn { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+  .option.unpicked img.art { opacity: 0.75; }
+  .reveal .who { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; }
+  .reveal .who .artist { color: var(--ink); }
+  .reveal .who .set { color: var(--muted); font-size: 12px; text-align: right; }
+  .reveal .pickline { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 13px; }
+  .reveal .pct { font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .reveal .youbadge { color: var(--gold); font-size: 12px; }
+  .bar { height: 6px; background: var(--grid); border-radius: 4px; margin-top: 6px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--blue); border-radius: 4px; transition: width .5s ease; }
+  .option.picked .bar > i { background: var(--gold); }
+  .duel-actions { display: flex; justify-content: center; align-items: center; gap: 18px; margin-top: 22px; min-height: 40px; }
+  .duel-actions .ghost {
+    background: none; border: none; color: var(--muted); font-size: 13px;
+  }
+  .duel-actions .ghost:hover { color: var(--ink-2); }
+  .next-btn {
+    background: var(--gold); color: #1a1505; border: none; border-radius: 8px;
+    padding: 9px 26px; font-weight: 600; font-size: 14px;
+  }
+  .next-btn:hover { filter: brightness(1.08); }
+  .agree-note { text-align: center; color: var(--ink-2); font-size: 13px; margin-top: 14px; min-height: 20px; }
+  .agree-note b { color: var(--ink); }
+  .loading { text-align: center; color: var(--muted); padding: 60px 0; font-size: 14px; }
+  .kbd-hint { text-align: center; color: var(--muted); font-size: 11px; margin-top: 18px; }
+  .kbd-hint kbd { border: 1px solid var(--grid); border-radius: 4px; padding: 0 5px; font-family: var(--sans); }
+
+  /* ---------- stats ---------- */
+  .stats-head { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  .stats-head h2 { font-family: var(--serif); font-size: 26px; font-weight: 500; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+  .chips button {
+    background: none; border: 1px solid var(--grid); color: var(--ink-2);
+    border-radius: 999px; padding: 4px 12px; font-size: 12.5px;
+  }
+  .chips button.active { background: var(--surface); border-color: var(--gold); color: var(--ink); }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 26px; }
+  .kpi { background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; padding: 16px 18px; }
+  .kpi .v { font-size: 34px; font-weight: 600; line-height: 1.15; }
+  .kpi .k { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .panel { background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; padding: 18px; margin-bottom: 22px; }
+  .panel h3 { font-size: 15px; font-weight: 600; }
+  .panel .note { color: var(--muted); font-size: 12px; margin-top: 2px; margin-bottom: 12px; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--grid); }
+  .row:first-of-type { border-top: none; }
+  .rank { color: var(--muted); font-size: 12.5px; width: 20px; text-align: right; font-variant-numeric: tabular-nums; }
+  .thumb { width: 64px; height: 48px; object-fit: cover; border-radius: 6px; background: var(--grid); flex: none; }
+  .row .info { flex: 1; min-width: 0; }
+  .row .title { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .subtitle { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .metric { width: 190px; flex: none; }
+  .row .metric .lbl { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .row .metric .lbl span:last-child { color: var(--muted); }
+  .pairbar { display: flex; height: 6px; border-radius: 4px; overflow: hidden; margin-top: 6px; gap: 2px; }
+  .pairbar i { display: block; height: 100%; }
+  .pairbar .pa { background: var(--blue); border-radius: 4px 0 0 4px; }
+  .pairbar .pb { background: var(--orange); border-radius: 0 4px 4px 0; }
+  .versus { display: flex; gap: 6px; flex: none; }
+  .empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
+
+  /* ---------- modal ---------- */
+  .modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    display: flex; align-items: center; justify-content: center; z-index: 20; cursor: zoom-out;
+  }
+  .modal img { max-height: 88vh; max-width: 92vw; border-radius: 16px; }
+
+  footer {
+    border-top: 1px solid var(--grid); color: var(--muted);
+    font-size: 11.5px; padding: 14px 24px; text-align: center; line-height: 1.7;
+  }
+  footer a { color: var(--muted); text-decoration: underline; }
+
+  @media (max-width: 720px) {
+    .fmt-grid, .kpis { grid-template-columns: 1fr; }
+    .arena { grid-template-columns: 1fr; }
+    .row .metric { width: 120px; }
+    header { flex-wrap: wrap; gap: 10px; }
+    nav { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Art Duel <small>MTG ART, HEAD TO HEAD</small></div>
+  <span id="fmt-pill" class="fmt-pill hidden"></span>
+  <nav>
+    <button id="nav-play" class="active">Play</button>
+    <button id="nav-stats">Stats</button>
+  </nav>
+</header>
+
+<main>
+  <section id="view-home">
+    <div class="hero">
+      <h1>Which art wins?</h1>
+      <p>Two printings of the same Magic card, side by side. Pick the art you
+         prefer and see how the whole community voted. Choose a format to start.</p>
+      <div class="count" id="home-count"></div>
+    </div>
+    <div class="fmt-grid" id="fmt-grid"></div>
+  </section>
+
+  <section id="view-duel" class="hidden"></section>
+
+  <section id="view-stats" class="hidden">
+    <div class="stats-head">
+      <h2>Community rankings</h2>
+      <div class="chips" id="stat-chips"></div>
+    </div>
+    <div id="stats-body" class="loading">Loading…</div>
+  </section>
+</main>
+
+<footer>
+  Card data and images courtesy of <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>.
+  Staple lists refresh automatically from <a href="https://mtgtop8.com" target="_blank" rel="noopener">MTGTop8</a>
+  and <a href="https://edhrec.com" target="_blank" rel="noopener">EDHREC</a>.
+  <span id="foot-updated"></span><br>
+  Unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards.
+  Card images &copy; Wizards of the Coast.
+</footer>
+
+<script>
+"use strict";
+
+const $ = (sel, el = document) => el.querySelector(sel);
+const esc = s => String(s ?? "").replace(/[&<>"']/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const state = {
+  view: "home",
+  format: localStorage.getItem("mtgart.format") || null,
+  formats: [],
+  matchup: null,   // current matchup
+  next: null,      // preloaded {matchup} promise
+  voted: false,
+  statFormat: "all",
+};
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (!r.ok) {
+    let msg = r.statusText;
+    try { msg = (await r.json()).message || msg; } catch (e) {}
+    throw new Error(msg);
+  }
+  return r.json();
+}
+
+/* ---------------- view switching ---------------- */
+
+function show(view) {
+  state.view = view;
+  for (const v of ["home", "duel", "stats"]) {
+    $("#view-" + v).classList.toggle("hidden", v !== view);
+  }
+  $("#nav-play").classList.toggle("active", view !== "stats");
+  $("#nav-stats").classList.toggle("active", view === "stats");
+  const pill = $("#fmt-pill");
+  const label = fmtLabel(state.format);
+  pill.classList.toggle("hidden", view !== "duel" || !label);
+  if (label) pill.textContent = label;
+}
+
+const fmtLabel = key =>
+  (state.formats.find(f => f.key === key) || {}).label || null;
+
+$("#nav-play").onclick = () => state.format ? startDuel() : show("home");
+$("#nav-stats").onclick = () => { show("stats"); loadStats(); };
+
+/* ---------------- home ---------------- */
+
+async function loadHome() {
+  const data = await api("/api/formats");
+  state.formats = data.formats;
+  $("#home-count").innerHTML = data.total_votes
+    ? `<b>${data.total_votes.toLocaleString()}</b> votes cast so far`
+    : "Be the first to vote!";
+  const grid = $("#fmt-grid");
+  grid.innerHTML = "";
+  let newest = 0;
+  for (const f of data.formats) {
+    if (f.updated_at) newest = Math.max(newest, f.updated_at);
+    const b = document.createElement("button");
+    b.className = "fmt-tile";
+    b.innerHTML = `<div class="name">${esc(f.label)}</div>
+      <div class="meta">${f.cards} staples &middot; ${esc(f.source)}</div>`;
+    b.onclick = () => { setFormat(f.key); };
+    grid.appendChild(b);
+  }
+  if (newest) {
+    const days = Math.max(0, Math.round((Date.now() / 1000 - newest) / 86400));
+    $("#foot-updated").textContent =
+      ` Staples last updated ${days === 0 ? "today" : days + "d ago"}.`;
+  }
+}
+
+function setFormat(key) {
+  state.format = key;
+  localStorage.setItem("mtgart.format", key);
+  state.next = null;
+  startDuel();
+}
+
+/* ---------------- duel ---------------- */
+
+const preloadImages = m => m.arts.forEach(a => { const i = new Image(); i.src = a.art; });
+
+function fetchMatchup() {
+  return api("/api/matchup?format=" + encodeURIComponent(state.format))
+    .then(m => { preloadImages(m); return m; });
+}
+
+async function startDuel() {
+  show("duel");
+  const root = $("#view-duel");
+  root.innerHTML = `<div class="loading">Summoning two arts&hellip;</div>`;
+  try {
+    const m = state.next ? await state.next : await fetchMatchup();
+    state.next = fetchMatchup().catch(() => null);  // preload the one after
+    renderDuel(m);
+  } catch (e) {
+    root.innerHTML = `<div class="loading">Could not load a matchup (${esc(e.message)}).
+      <br><br><button class="next-btn" onclick="startDuel()">Try again</button></div>`;
+  }
+}
+
+function renderDuel(m) {
+  state.matchup = m;
+  state.voted = false;
+  const root = $("#view-duel");
+  root.innerHTML = `
+    <div class="duel-head">
+      <div class="prompt">Which art do you prefer?</div>
+      <h2>${esc(m.card)}</h2>
+      <div class="sub">${m.total_arts} known arts &middot; ${esc(fmtLabel(m.format) || "")}</div>
+    </div>
+    <div class="arena state-open" id="arena">
+      ${m.arts.map((a, i) => `
+        <figure class="option" data-i="${i}">
+          <button class="art-btn" aria-label="Prefer art ${i + 1}">
+            <img class="art" src="${esc(a.art)}" alt="Art option ${i + 1} for ${esc(m.card)}">
+          </button>
+          <figcaption class="reveal">
+            <div class="who">
+              <span class="artist"></span><span class="set"></span>
+            </div>
+            <div class="pickline"><span class="pct"></span><span class="youbadge"></span></div>
+            <div class="bar"><i></i></div>
+          </figcaption>
+        </figure>`).join("")}
+    </div>
+    <div class="agree-note" id="agree-note"></div>
+    <div class="duel-actions" id="duel-actions">
+      <button class="ghost" id="skip-btn">Skip this card</button>
+      <button class="ghost" id="change-btn">Change format</button>
+    </div>
+    <div class="kbd-hint"><kbd>&larr;</kbd> <kbd>&rarr;</kbd> to vote &middot; <kbd>S</kbd> skip &middot; <kbd>Enter</kbd> next</div>`;
+  $("#skip-btn").onclick = () => startDuel();
+  $("#change-btn").onclick = () => show("home");
+  root.querySelectorAll(".option .art-btn").forEach((btn, i) => {
+    btn.onclick = () => state.voted
+      ? openModal(m.arts[i].full)
+      : castVote(i);
+  });
+}
+
+async function castVote(i) {
+  if (state.voted) return;
+  state.voted = true;
+  const m = state.matchup;
+  const winner = m.arts[i], loser = m.arts[1 - i];
+  const arena = $("#arena");
+  arena.classList.remove("state-open");
+  arena.classList.add("state-done");
+
+  let res = null;
+  try {
+    res = await api("/api/vote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        format: m.format, card: m.card, winner: winner.id, loser: loser.id,
+      }),
+    });
+  } catch (e) {
+    $("#agree-note").textContent = "Vote failed to save (" + e.message + ")";
+  }
+
+  arena.querySelectorAll(".option").forEach(opt => {
+    const idx = +opt.dataset.i;
+    const a = m.arts[idx];
+    const picked = idx === i;
+    opt.classList.add(picked ? "picked" : "unpicked");
+    $(".artist", opt).textContent = a.artist || "Unknown artist";
+    $(".set", opt).textContent =
+      (a.set_name || "") + (a.released_at ? " · " + a.released_at.slice(0, 4) : "");
+    if (res) {
+      const pct = picked ? res.pair.agree_pct : 100 - res.pair.agree_pct;
+      $(".pct", opt).textContent = pct + "% of votes";
+      requestAnimationFrame(() => { $(".bar i", opt).style.width = pct + "%"; });
+    }
+    if (picked) $(".youbadge", opt).textContent = "✦ your pick";
+  });
+
+  if (res) {
+    const n = res.pair.with_you + res.pair.against_you;
+    $("#agree-note").innerHTML = n > 1
+      ? `<b>${res.pair.agree_pct}%</b> of ${n} votes on this pairing agree with you
+         &middot; ${res.card_votes} total votes on ${esc(m.card)}`
+      : `You're the first to vote on this pairing.`;
+  }
+  const actions = $("#duel-actions");
+  const next = document.createElement("button");
+  next.className = "next-btn";
+  next.id = "next-btn";
+  next.textContent = "Next duel →";
+  next.onclick = () => startDuel();
+  actions.prepend(next);
+  next.focus();
+}
+
+/* ---------------- modal ---------------- */
+
+function openModal(src) {
+  const div = document.createElement("div");
+  div.className = "modal";
+  div.innerHTML = `<img src="${esc(src)}" alt="Full card">`;
+  div.onclick = () => div.remove();
+  document.body.appendChild(div);
+}
+
+/* ---------------- stats ---------------- */
+
+function statChips() {
+  const wrap = $("#stat-chips");
+  const all = [{ key: "all", label: "All formats" },
+               ...state.formats.map(f => ({ key: f.key, label: f.label }))];
+  wrap.innerHTML = "";
+  for (const f of all) {
+    const b = document.createElement("button");
+    b.textContent = f.label;
+    b.classList.toggle("active", state.statFormat === f.key);
+    b.onclick = () => { state.statFormat = f.key; statChips(); loadStats(); };
+    wrap.appendChild(b);
+  }
+}
+
+const artRow = (e, i) => `
+  <div class="row">
+    <span class="rank">${i + 1}</span>
+    <img class="thumb" src="${esc(e.art)}" alt="" loading="lazy">
+    <div class="info">
+      <div class="title">${esc(e.card_name)}</div>
+      <div class="subtitle">${esc(e.artist || "")} &middot; ${esc(e.set_name || "")}${
+        e.released_at ? " · " + e.released_at.slice(0, 4) : ""}</div>
+    </div>
+    <div class="metric">
+      <div class="lbl"><span>${e.win_rate}% wins</span><span>${e.wins}–${e.losses} · Elo ${e.elo}</span></div>
+      <div class="bar"><i style="width:${e.win_rate}%"></i></div>
+    </div>
+  </div>`;
+
+const pairRow = e => `
+  <div class="row">
+    <div class="versus">
+      <img class="thumb" src="${esc(e.a.art)}" alt="" loading="lazy">
+      <img class="thumb" src="${esc(e.b.art)}" alt="" loading="lazy">
+    </div>
+    <div class="info">
+      <div class="title">${esc(e.card_name)}</div>
+      <div class="subtitle">${esc(e.a.artist || "?")} vs ${esc(e.b.artist || "?")}</div>
+    </div>
+    <div class="metric">
+      <div class="lbl"><span>${e.a.pct}% / ${e.b.pct}%</span><span>${e.n} votes</span></div>
+      <div class="pairbar">
+        <i class="pa" style="width:${e.a.pct}%"></i><i class="pb" style="width:${e.b.pct}%"></i>
+      </div>
+    </div>
+  </div>`;
+
+async function loadStats() {
+  statChips();
+  const body = $("#stats-body");
+  body.className = "loading";
+  body.textContent = "Loading…";
+  let s;
+  try {
+    s = await api("/api/stats?format=" + state.statFormat);
+  } catch (e) {
+    body.textContent = "Could not load stats (" + esc(e.message) + ")";
+    return;
+  }
+  body.className = "";
+  if (!s.totals.votes) {
+    body.innerHTML = `<div class="panel"><div class="empty">No votes yet
+      ${state.statFormat === "all" ? "" : "in this format"} — go play some duels!</div></div>`;
+    return;
+  }
+  const t = s.totals;
+  body.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="v">${t.votes.toLocaleString()}</div><div class="k">votes cast</div></div>
+      <div class="kpi"><div class="v">${t.cards.toLocaleString()}</div><div class="k">cards contested</div></div>
+      <div class="kpi"><div class="v">${t.arts.toLocaleString()}</div><div class="k">arts ranked</div></div>
+    </div>
+    <div class="panel">
+      <h3>Top-ranked arts</h3>
+      <div class="note">Ranked by Wilson score (win rate adjusted for sample size), minimum ${s.min_games} duel${s.min_games > 1 ? "s" : ""}.</div>
+      ${s.top_arts.length ? s.top_arts.map(artRow).join("") : `<div class="empty">Not enough data yet.</div>`}
+    </div>
+    <div class="panel">
+      <h3>Closest rivalries</h3>
+      <div class="note">Pairings the community can't agree on.</div>
+      ${s.closest.length ? s.closest.map(pairRow).join("") : `<div class="empty">Not enough data yet.</div>`}
+    </div>
+    <div class="panel">
+      <h3>Biggest blowouts</h3>
+      <div class="note">Pairings with a runaway favorite (&ge;65%).</div>
+      ${s.blowouts.length ? s.blowouts.map(pairRow).join("") : `<div class="empty">Not enough data yet.</div>`}
+    </div>
+    <div class="panel">
+      <h3>Top artists</h3>
+      <div class="note">By win record across all their duelling arts.</div>
+      ${s.top_artists.length ? s.top_artists.map((a, i) => `
+        <div class="row">
+          <span class="rank">${i + 1}</span>
+          <div class="info">
+            <div class="title">${esc(a.artist)}</div>
+            <div class="subtitle">${a.arts} art${a.arts > 1 ? "s" : ""} in play</div>
+          </div>
+          <div class="metric">
+            <div class="lbl"><span>${a.win_rate}% wins</span><span>${a.wins}–${a.losses}</span></div>
+            <div class="bar"><i style="width:${a.win_rate}%"></i></div>
+          </div>
+        </div>`).join("") : `<div class="empty">Not enough data yet.</div>`}
+    </div>
+    <div class="panel">
+      <h3>Most voted cards</h3>
+      ${s.most_voted.map((c, i) => `
+        <div class="row">
+          <span class="rank">${i + 1}</span>
+          <div class="info"><div class="title">${esc(c.card_name)}</div></div>
+          <div class="metric">
+            <div class="lbl"><span>${c.votes} votes</span><span></span></div>
+            <div class="bar"><i style="width:${Math.round(100 * c.votes / s.most_voted[0].votes)}%"></i></div>
+          </div>
+        </div>`).join("")}
+    </div>`;
+}
+
+/* ---------------- keyboard ---------------- */
+
+document.addEventListener("keydown", ev => {
+  if (state.view !== "duel" || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+  if (!state.voted && ev.key === "ArrowLeft") castVote(0);
+  else if (!state.voted && ev.key === "ArrowRight") castVote(1);
+  else if (ev.key === "s" || ev.key === "S") startDuel();
+  else if (state.voted && ev.key === "Enter") startDuel();
+});
+
+/* ---------------- boot ---------------- */
+
+loadHome().then(() => {
+  if (state.format && fmtLabel(state.format)) startDuel();
+  else show("home");
+}).catch(() => {
+  $("#home-count").textContent = "Could not reach the server.";
+});
+</script>
+</body>
+</html>
