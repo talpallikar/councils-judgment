@@ -35,7 +35,7 @@ const staplesFixture = {
   generated_at: 1700000000,
   formats: [
     { key: "modern", label: "Modern", source: "test", updated_at: 1700000000,
-      names: ["Lightning Bolt"] },
+      names: ["Lightning Bolt", "Delver of Secrets"] },
     { key: "legacy", label: "Legacy", source: "test", updated_at: 1700000000,
       names: ["Delver of Secrets"] },
     { key: "vintage", label: "Vintage", source: "test", updated_at: null, names: [] },
@@ -66,13 +66,14 @@ beforeEach(() => {
 });
 
 // ---- extractArt ----
-test("extractArt: normal card yields id, artist and both image urls", () => {
+test("extractArt: normal card yields id, artist, images and Scryfall page", () => {
   const card = FIX("scryfall_bolt.json").data[0];
   const e = T.extractArt(card, "Lightning Bolt");
   assert.ok(e.id);
   assert.ok(e.artist);
   assert.match(e.art, /^https:\/\/cards\.scryfall\.io\//);
   assert.match(e.full, /^https:\/\/cards\.scryfall\.io\//);
+  assert.match(e.page, /^https:\/\/scryfall\.com\//);
 });
 
 test("extractArt: transform card resolves the matching face", () => {
@@ -108,10 +109,23 @@ test("wilson: 3-0 does not outrank 40-10", () => {
 test("newMatchup: returns two distinct arts of the same card", async () => {
   T.state.format = "modern";
   const m = await T.newMatchup();
-  assert.equal(m.card, "Lightning Bolt");
+  assert.ok(["Lightning Bolt", "Delver of Secrets"].includes(m.card));
   assert.equal(m.arts.length, 2);
   assert.notEqual(m.arts[0].id, m.arts[1].id);
   assert.ok(m.total_arts >= 2);
+});
+
+test("newMatchup: cycles through the pool before repeating a card", async () => {
+  T.state.format = "modern";   // two-card pool
+  const first = (await T.newMatchup()).card;
+  const seenAfter = JSON.parse(global.localStorage._m["mtgart.seen.modern"] || "[]");
+  assert.deepEqual(seenAfter, [first],
+    "exactly the drawn card should be marked seen — anything else means a " +
+    "fixture card was skipped as having <2 arts");
+  const second = (await T.newMatchup()).card;
+  assert.notEqual(first, second, "second draw must differ in a 2-card pool");
+  const third = (await T.newMatchup()).card;  // pool exhausted -> cycles
+  assert.ok(["Lightning Bolt", "Delver of Secrets"].includes(third));
 });
 
 test("newMatchup: format with empty staple list rejects", async () => {

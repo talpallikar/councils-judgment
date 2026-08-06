@@ -28,7 +28,8 @@
      }
     }
    ],
-   "layout": "transform"
+   "layout": "transform",
+   "scryfall_uri": "https://scryfall.com/card/isd/51/delver-of-secrets-insectile-aberration?utm_source=api"
   },
   {
    "name": "Delver of Secrets // Insectile Aberration",
@@ -56,7 +57,8 @@
      }
     }
    ],
-   "layout": "transform"
+   "layout": "transform",
+   "scryfall_uri": "https://scryfall.com/card/v17/7/delver-of-secrets-insectile-aberration?utm_source=api"
   },
   {
    "name": "Delver of Secrets // Insectile Aberration",
@@ -84,7 +86,8 @@
      }
     }
    ],
-   "layout": "transform"
+   "layout": "transform",
+   "scryfall_uri": "https://scryfall.com/card/mid/47/delver-of-secrets-insectile-aberration?utm_source=api"
   },
   {
    "name": "Delver of Secrets // Delver of Secrets",
@@ -112,7 +115,8 @@
      }
     }
    ],
-   "layout": "art_series"
+   "layout": "art_series",
+   "scryfall_uri": "https://scryfall.com/card/amid/21/delver-of-secrets-delver-of-secrets?utm_source=api"
   },
   {
    "name": "Delver of Secrets // Insectile Aberration",
@@ -140,7 +144,8 @@
      }
     }
    ],
-   "layout": "transform"
+   "layout": "transform",
+   "scryfall_uri": "https://scryfall.com/card/dbl/47/delver-of-secrets-insectile-aberration?utm_source=api"
   },
   {
    "name": "Delver of Secrets // Insectile Aberration",
@@ -168,7 +173,8 @@
      }
     }
    ],
-   "layout": "transform"
+   "layout": "transform",
+   "scryfall_uri": "https://scryfall.com/card/sld/722/delver-of-secrets-insectile-aberration?utm_source=api"
   },
   {
    "name": "Delver of Secrets // Insectile Aberration",
@@ -196,7 +202,8 @@
      }
     }
    ],
-   "layout": "transform"
+   "layout": "transform",
+   "scryfall_uri": "https://scryfall.com/card/sld/2367/delver-of-secrets-insectile-aberration?utm_source=api"
   }
  ]
 }

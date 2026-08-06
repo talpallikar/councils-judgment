@@ -19,8 +19,11 @@ create table if not exists votes (
   winner_artist text, winner_set text, winner_art text,
   loser_artist  text, loser_set  text, loser_art  text,
   voter_hash text,   -- sha256(salt + caller IP); raw IPs are never stored
+  user_id uuid,      -- set when the voter is signed in (optional accounts)
   created_at timestamptz not null default now()
 );
+-- idempotent upgrade for databases created before optional accounts existed
+alter table votes add column if not exists user_id uuid;
 create index if not exists votes_card_idx on votes (card_name);
 create index if not exists votes_format_idx on votes (format);
 create index if not exists votes_voter_idx on votes (voter_hash, created_at);
@@ -59,7 +62,8 @@ declare
   agree int; disagree int; card_total int;
   hdrs jsonb; ip text; vhash text;
 begin
-  if p_format not in ('standard','pioneer','modern','legacy','vintage','commander') then
+  if p_format not in ('standard','pioneer','modern','legacy','vintage','commander')
+     and p_format !~ '^set:[a-z0-9]{2,6}$' then
     raise exception 'unknown format';
   end if;
   if p_card is null or char_length(p_card) = 0 or char_length(p_card) > 200 then
@@ -86,27 +90,27 @@ begin
     vhash := encode(digest((select salt from app_secrets limit 1) || ip, 'sha256'), 'hex');
     if (select count(*) from votes where voter_hash = vhash
         and created_at > now() - interval '1 minute') >= 15 then
-      raise exception 'Easy there, planeswalker — voting too fast. Try again in a minute.';
+      raise exception 'Too many votes in the last minute. Try again shortly.';
     end if;
     if (select count(*) from votes where voter_hash = vhash
         and created_at > now() - interval '1 hour') >= 250 then
-      raise exception 'Hourly vote limit reached — come back in a bit.';
+      raise exception 'Hourly vote limit reached.';
     end if;
     if (select count(*) from votes where voter_hash = vhash
         and winner_id in (wid, lid) and loser_id in (wid, lid)
         and created_at > now() - interval '1 day') >= 3 then
-      raise exception 'You have already judged this pairing today.';
+      raise exception 'Daily limit reached for this pairing.';
     end if;
   end if;
 
   insert into votes (format, card_name, winner_id, loser_id,
                      winner_artist, winner_set, winner_art,
-                     loser_artist, loser_set, loser_art, voter_hash)
+                     loser_artist, loser_set, loser_art, voter_hash, user_id)
   values (p_format, p_card, wid, lid,
           left(p_winner->>'artist', 120), left(p_winner->>'set_name', 120),
           left(p_winner->>'art', 300),
           left(p_loser->>'artist', 120), left(p_loser->>'set_name', 120),
-          left(p_loser->>'art', 300), vhash);
+          left(p_loser->>'art', 300), vhash, auth.uid());
 
   select count(*) into agree
     from votes where card_name = p_card and winner_id = wid and loser_id = lid;
@@ -124,12 +128,18 @@ begin
 end
 $$;
 
-create or replace function get_stats(fmt text default 'all')
+-- signature changed when p_mine was added; drop the old overload so RPC
+-- name resolution stays unambiguous
+drop function if exists get_stats(text);
+
+create or replace function get_stats(fmt text default 'all', p_mine boolean default false)
 returns jsonb
 language sql stable security definer set search_path = public
 as $$
 with v as (
-  select * from votes where fmt = 'all' or format = fmt
+  select * from votes
+  where (fmt = 'all' or format = fmt)
+    and (not p_mine or user_id = auth.uid())
 ),
 totals as (select count(*)::int n from v),
 mg as (
@@ -223,6 +233,6 @@ select jsonb_build_object(
 $$;
 
 revoke all on function record_vote(text, text, jsonb, jsonb) from public;
-revoke all on function get_stats(text) from public;
+revoke all on function get_stats(text, boolean) from public;
 grant execute on function record_vote(text, text, jsonb, jsonb) to anon, authenticated;
-grant execute on function get_stats(text) to anon, authenticated;
+grant execute on function get_stats(text, boolean) to anon, authenticated;

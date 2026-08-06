@@ -1,10 +1,16 @@
 # Council's Judgment
 
-*Will of the council* — a one-page web app: two arts of the same Magic card,
-side by side; pick the one you prefer. Votes are aggregated into community
-rankings (Wilson-scored art leaderboard, closest rivalries, biggest blowouts,
-top artists). Named after the card whose whole mechanic is everyone voting
-and the winner resolving.
+A one-page web app: two arts of the same Magic card, side by side; pick the
+one you prefer. Votes are aggregated into community rankings (Wilson-scored
+art leaderboard, closest rivalries, biggest blowouts, top artists). Named
+after the card whose whole mechanic is everyone voting and the winner
+resolving.
+
+Card pools come from a **format** (its most-played staples, refreshed weekly)
+or from a **single set** (its cards, with arts drawn from every printing they
+ever had). Recently shown cards are tracked per pool so the whole pool cycles
+before anything repeats. **Optional accounts** (email magic link via Supabase
+Auth) tie votes to a user, unlocking a personal "my votes" view in stats.
 
 Hosted entirely on **GitHub Pages** (static frontend, Scryfall called directly
 from the browser) with **Supabase** (free tier) as the shared vote store and a
@@ -17,8 +23,13 @@ from the browser) with **Supabase** (free tier) as the shared vote store and a
    Branch `main`, folder `/docs`.
 3. **Create a free Supabase project** at [supabase.com](https://supabase.com),
    then open its *SQL Editor*, paste all of `supabase/schema.sql`, and run it.
+   The file is idempotent — re-run it after pulling schema changes.
 4. **Wire the frontend**: put your project's URL and anon key (Project
    Settings → API) into `docs/config.js`, commit, push.
+5. **For sign-in links** (optional accounts): in Supabase, set
+   *Authentication → URL Configuration → Site URL* to your Pages URL
+   (e.g. `https://<user>.github.io/<repo>/`), or magic links will redirect
+   to localhost.
 5. **Enable the workflow**: the *Update staple lists* action runs Mondays and
    on demand (Actions tab → Run workflow). It commits a fresh
    `docs/staples.json`, which redeploys Pages automatically.

@@ -13,7 +13,8 @@
     "normal": "https://cards.scryfall.io/normal/front/d/5/d573ef03-4730-45aa-93dd-e45ac1dbaf4a.jpg?1783948684",
     "art_crop": "https://cards.scryfall.io/art_crop/front/d/5/d573ef03-4730-45aa-93dd-e45ac1dbaf4a.jpg?1783948684"
    },
-   "layout": "normal"
+   "layout": "normal",
+   "scryfall_uri": "https://scryfall.com/card/lea/161/lightning-bolt?utm_source=api"
   },
   {
    "name": "Lightning Bolt",
@@ -26,7 +27,8 @@
     "normal": "https://cards.scryfall.io/normal/front/4/3/435589bb-27c6-4a6d-9d63-394d5092b9d8.jpg?1783942371",
     "art_crop": "https://cards.scryfall.io/art_crop/front/4/3/435589bb-27c6-4a6d-9d63-394d5092b9d8.jpg?1783942371"
    },
-   "layout": "normal"
+   "layout": "normal",
+   "scryfall_uri": "https://scryfall.com/card/m10/146/lightning-bolt?utm_source=api"
   },
   {
    "name": "Lightning Bolt",
@@ -39,7 +41,8 @@
     "normal": "https://cards.scryfall.io/normal/front/2/8/28708c8c-4336-4d04-b43a-59a31471a9f6.jpg?1783942076",
     "art_crop": "https://cards.scryfall.io/art_crop/front/2/8/28708c8c-4336-4d04-b43a-59a31471a9f6.jpg?1783942076"
    },
-   "layout": "normal"
+   "layout": "normal",
+   "scryfall_uri": "https://scryfall.com/card/p10/1/lightning-bolt?utm_source=api"
   },
   {
    "name": "Lightning Bolt",
@@ -52,7 +55,8 @@
     "normal": "https://cards.scryfall.io/normal/front/f/f/ff204024-20a5-4bb9-82b6-f6b4337efd60.jpg?1783933733",
     "art_crop": "https://cards.scryfall.io/art_crop/front/f/f/ff204024-20a5-4bb9-82b6-f6b4337efd60.jpg?1783933733"
    },
-   "layout": "normal"
+   "layout": "normal",
+   "scryfall_uri": "https://scryfall.com/card/pf19/1/lightning-bolt?utm_source=api"
   },
   {
    "name": "Lightning Bolt",
@@ -65,7 +69,8 @@
     "normal": "https://cards.scryfall.io/normal/front/4/5/45184cd7-b037-4a85-a063-e622ca928d17.jpg?1783930772",
     "art_crop": "https://cards.scryfall.io/art_crop/front/4/5/45184cd7-b037-4a85-a063-e622ca928d17.jpg?1783930772"
    },
-   "layout": "normal"
+   "layout": "normal",
+   "scryfall_uri": "https://scryfall.com/card/sld/83/lightning-bolt?utm_source=api"
   },
   {
    "name": "Lightning Bolt",
@@ -78,7 +83,8 @@
     "normal": "https://cards.scryfall.io/normal/front/6/f/6fb94c1b-8002-4d79-add0-c4dfef9019ee.jpg?1783930772",
     "art_crop": "https://cards.scryfall.io/art_crop/front/6/f/6fb94c1b-8002-4d79-add0-c4dfef9019ee.jpg?1783930772"
    },
-   "layout": "normal"
+   "layout": "normal",
+   "scryfall_uri": "https://scryfall.com/card/sld/84/lightning-bolt?utm_source=api"
   },
   {
    "name": "Lightning Bolt",
@@ -91,7 +97,8 @@
     "normal": "https://cards.scryfall.io/normal/front/6/a/6ab06973-6440-4b12-8947-8c412500fa41.jpg?1783930773",
     "art_crop": "https://cards.scryfall.io/art_crop/front/6/a/6ab06973-6440-4b12-8947-8c412500fa41.jpg?1783930773"
    },
-   "layout": "normal"
+   "layout": "normal",
+   "scryfall_uri": "https://scryfall.com/card/sld/85/lightning-bolt?utm_source=api"
   },
   {
    "name": "Lightning Bolt",
@@ -104,7 +111,8 @@
     "normal": "https://cards.scryfall.io/normal/front/c/3/c3eb3895-b64c-46ab-b704-3c46963920ba.jpg?1783930773",
     "art_crop": "https://cards.scryfall.io/art_crop/front/c/3/c3eb3895-b64c-46ab-b704-3c46963920ba.jpg?1783930773"
    },
-   "layout": "normal"
+   "layout": "normal",
+   "scryfall_uri": "https://scryfall.com/card/sld/86/lightning-bolt?utm_source=api"
   }
  ]
 }
