@@ -60,6 +60,20 @@
   .pool-menu button:hover { background: var(--grid); color: var(--ink); }
   .pool-menu button.current { color: var(--gold); }
   .pool-menu hr { border: none; border-top: 1px solid var(--grid); margin: 5px 4px; }
+  .mode-toggle {
+    display: inline-flex; background: var(--surface); border: 1px solid var(--hair);
+    border-radius: 999px; overflow: hidden;
+  }
+  .mode-toggle button {
+    background: none; border: none; color: var(--muted); font-size: 12.5px;
+    padding: 4px 12px;
+  }
+  .mode-toggle button.active { background: var(--grid); color: var(--ink); }
+  .mode-row {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-top: 16px; font-size: 13px; color: var(--ink-2); flex-wrap: wrap;
+  }
+  .mode-row .mode-hint { color: var(--muted); font-size: 12px; }
   .banner {
     background: #2a2410; color: #e8d9a0; border-bottom: 1px solid #4a3f1d;
     font-size: 12.5px; padding: 7px 24px; text-align: center;
@@ -229,6 +243,9 @@
 <header>
   <div class="brand">Council's Judgment</div>
   <button id="fmt-pill" class="fmt-pill hidden"></button>
+  <div class="mode-toggle hidden" id="mode-toggle">
+    <button data-mode="same">Same card</button><button data-mode="cross">Two cards</button>
+  </div>
   <div id="pool-menu" class="pool-menu hidden"></div>
   <nav>
     <button id="nav-play" class="active">Play</button>
@@ -248,6 +265,13 @@
       <p>Every duel shows two printings of the same Magic card, side by side.
          Pick the art you prefer and see how everyone else voted.</p>
       <div class="count" id="home-count"></div>
+      <div class="mode-row">
+        <span>Duel mode:</span>
+        <div class="mode-toggle" id="mode-toggle-home">
+          <button data-mode="same">Same card</button><button data-mode="cross">Two cards</button>
+        </div>
+        <span class="mode-hint" id="mode-hint"></span>
+      </div>
     </div>
     <div class="grid-label">
       <h2>First, choose a format</h2>
@@ -303,6 +327,7 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g,
 const state = {
   view: "home",
   format: localStorage.getItem("mtgart.format") || null,
+  mode: localStorage.getItem("mtgart.mode") === "cross" ? "cross" : "same",
   staples: null,   // parsed staples.json
   matchup: null,
   next: null,
@@ -490,19 +515,23 @@ function wilson(wins, games) {
 async function recordVote(m, winner, loser) {
   const w = { id: winner.id, artist: winner.artist, set_name: winner.set_name, art: winner.art };
   const l = { id: loser.id, artist: loser.artist, set_name: loser.set_name, art: loser.art };
+  const cross = m.mode === "cross";
+  const wCard = cross ? winner.card : m.card;
+  const lCard = cross ? loser.card : null;
   if (REMOTE) {
-    return rpc("record_vote", { p_format: m.format, p_card: m.card, p_winner: w, p_loser: l });
+    return rpc("record_vote", { p_format: m.format, p_card: wCard,
+                                p_winner: w, p_loser: l, p_loser_card: lCard });
   }
   const votes = localVotes();
-  votes.push({ f: m.format, c: m.card, w, l, t: Date.now() });
+  votes.push({ f: m.format, c: wCard, lc: lCard, w, l, t: Date.now() });
   localStorage.setItem("mtgart.votes", JSON.stringify(votes));
-  const agree = votes.filter(v => v.c === m.card && v.w.id === w.id && v.l.id === l.id).length;
-  const disagree = votes.filter(v => v.c === m.card && v.w.id === l.id && v.l.id === w.id).length;
+  const agree = votes.filter(v => v.w.id === w.id && v.l.id === l.id).length;
+  const disagree = votes.filter(v => v.w.id === l.id && v.l.id === w.id).length;
   return {
     ok: true,
     pair: { with_you: agree, against_you: disagree,
             agree_pct: Math.round(100 * agree / (agree + disagree)) },
-    card_votes: votes.filter(v => v.c === m.card).length,
+    card_votes: votes.filter(v => v.c === wCard || v.lc === wCard).length,
   };
 }
 
@@ -533,13 +562,15 @@ function localStats(fmt) {
     return e;
   };
   for (const v of votes) {
+    const lCard = v.lc || v.c;   // cross-card votes carry the loser's card
     touch(v.w, true).card_name = v.c;
-    touch(v.l, false).card_name = v.c;
+    touch(v.l, false).card_name = lCard;
     perCard.set(v.c, (perCard.get(v.c) || 0) + 1);
+    if (lCard !== v.c) perCard.set(lCard, (perCard.get(lCard) || 0) + 1);
     byFormat[v.f] = (byFormat[v.f] || 0) + 1;
     const [a, b] = [v.w.id, v.l.id].sort();
-    const key = v.c + "|" + a + "|" + b;
-    const p = pairs.get(key) || { card: v.c, a, b, na: 0, nb: 0 };
+    const key = a + "|" + b;
+    const p = pairs.get(key) || { a, b, na: 0, nb: 0 };
     if (v.w.id === a) p.na++; else p.nb++;
     pairs.set(key, p);
   }
@@ -556,7 +587,9 @@ function localStats(fmt) {
     .map(p => {
       const ma = perArt.get(p.a) || {}, mb = perArt.get(p.b) || {};
       return {
-        card_name: p.card, n: p.n,
+        card_name: ma.card_name === mb.card_name
+          ? ma.card_name : ma.card_name + " vs " + mb.card_name,
+        n: p.n,
         a: { artist: ma.artist, set_name: ma.set_name, art: ma.art,
              votes: p.na, pct: Math.round(100 * p.na / p.n) },
         b: { artist: mb.artist, set_name: mb.set_name, art: mb.art,
@@ -610,7 +643,29 @@ function show(view) {
   const label = poolLabel(state.format);
   pill.classList.toggle("hidden", view !== "duel" || !label);
   if (label) pill.textContent = label;
+  $("#mode-toggle").classList.toggle("hidden", view !== "duel");
   $("#pool-menu").classList.add("hidden");
+  renderModeToggles();
+}
+
+function renderModeToggles() {
+  document.querySelectorAll(".mode-toggle button").forEach(b => {
+    b.classList.toggle("active", b.dataset.mode === state.mode);
+    b.onclick = ev => { ev.stopPropagation(); setMode(b.dataset.mode); };
+  });
+  const hint = $("#mode-hint");
+  if (hint) hint.textContent = state.mode === "cross"
+    ? "two arts from two different cards — names revealed after you vote"
+    : "two arts of the same card";
+}
+
+function setMode(mode) {
+  if (mode === state.mode) return;
+  state.mode = mode;
+  localStorage.setItem("mtgart.mode", mode);
+  state.next = null;
+  renderModeToggles();
+  if (state.view === "duel") startDuel();
 }
 
 $("#fmt-pill").onclick = ev => {
@@ -710,7 +765,7 @@ $("#nav-stats").onclick = () => { show("stats"); loadStats(); };
 /* ================= home ================= */
 
 async function loadHome() {
-  const r = await fetch("staples.json");
+  const r = await fetch("staples.json", { cache: "no-cache" });
   if (!r.ok) throw new Error("staples.json missing");
   state.staples = await r.json();
   const grid = $("#fmt-grid");
@@ -825,7 +880,42 @@ async function randomMatchup() {
   throw new Error("could not find a random card with two arts");
 }
 
+const randomScryCard = () =>
+  scry("https://api.scryfall.com/cards/random?q=" +
+       encodeURIComponent("prints>2 -is:digital"));
+
+// Cross-card mode: one random art each from two different cards of the pool.
+async function crossMatchup() {
+  const pool = state.format;
+  const names = pool === "any" ? null : [...await poolNames(pool)];
+  if (names && names.length < 2) throw new Error("pool too small for two cards");
+  for (let tries = 0; tries < 8; tries++) {
+    let a, b;
+    if (names) {
+      const s = shuffle([...names]);
+      [a, b] = [s[0], s[1]];
+    } else {
+      const [ca, cb] = [await randomScryCard(), await randomScryCard()];
+      if (!ca || !cb) continue;
+      a = (ca.name || "").split(" //")[0];
+      b = (cb.name || "").split(" //")[0];
+    }
+    if (!a || !b || a === b) continue;
+    const [pa, pb] = [await getPrints(a), await getPrints(b)];
+    if (!pa.length || !pb.length) continue;
+    const ra = pa[Math.floor(Math.random() * pa.length)];
+    const rb = pb[Math.floor(Math.random() * pb.length)];
+    if (ra.id === rb.id) continue;
+    const arts = [{ ...ra, card: a }, { ...rb, card: b }];
+    arts.forEach(x => { const img = new Image(); img.src = x.art; });
+    return { format: pool, mode: "cross", card: a + " vs " + b,
+             cards: [a, b], total_arts: 2, arts };
+  }
+  throw new Error("could not build a cross-card matchup");
+}
+
 async function newMatchup() {
+  if (state.mode === "cross") return crossMatchup();
   const pool = state.format;
   if (pool === "any") return randomMatchup();
   const all = [...await poolNames(pool)];
@@ -894,8 +984,10 @@ function renderDuel(m) {
   root.innerHTML = `
     <div class="duel-head">
       <div class="prompt">Which art do you prefer?</div>
-      <h2>${esc(m.card)}</h2>
-      <div class="sub">${m.total_arts} known arts &middot; ${esc(poolLabel(m.format) || "")}</div>
+      <h2>${m.mode === "cross" ? "Two different cards" : esc(m.card)}</h2>
+      <div class="sub">${m.mode === "cross"
+        ? "names revealed after you vote"
+        : m.total_arts + " known arts"} &middot; ${esc(poolLabel(m.format) || "")}</div>
     </div>
     <div class="arena state-open" id="arena">
       ${m.arts.map((a, i) => `
@@ -912,8 +1004,10 @@ function renderDuel(m) {
     </div>
     <div class="agree-note" id="agree-note"></div>
     <div class="duel-actions" id="duel-actions">
-      <button class="ghost" id="rearts-btn" ${m.total_arts < 3 ? "disabled" : ""}
-        title="${m.total_arts < 3 ? "This card only has these two arts" : "Draw a different pair of arts for this card"}">Different arts</button>
+      <button class="ghost" id="rearts-btn" ${m.mode === "cross" || m.total_arts < 3 ? "disabled" : ""}
+        title="${m.mode === "cross" ? "Same-card mode only"
+          : m.total_arts < 3 ? "This card only has these two arts"
+          : "Draw a different pair of arts for this card"}">Different arts</button>
       <button class="ghost" id="skip-btn">Skip this card</button>
       <button class="ghost" id="change-btn">Change pool</button>
     </div>
@@ -947,7 +1041,8 @@ async function castVote(i) {
     const a = m.arts[idx];
     const picked = idx === i;
     opt.classList.add(picked ? "picked" : "unpicked");
-    $(".artist", opt).textContent = a.artist || "Unknown artist";
+    $(".artist", opt).textContent = (m.mode === "cross" && a.card ? a.card + " — " : "")
+      + (a.artist || "Unknown artist");
     $(".set", opt).innerHTML =
       esc((a.set_name || "") + (a.released_at ? " · " + a.released_at.slice(0, 4) : "")) +
       (a.page ? ` · <a href="${esc(a.page)}" target="_blank" rel="noopener">Scryfall ↗</a>` : "");

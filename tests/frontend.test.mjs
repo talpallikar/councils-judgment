@@ -199,6 +199,22 @@ test("localStats: totals, ranking and pair aggregation", async () => {
   assert.equal(pair.a.votes + pair.b.votes, 4);
 });
 
+test("localStats: cross-card votes count both cards and label pairs", async () => {
+  const a = { ...art("11111111-0000-0000-0000-00000000000a", "Alice"), card: "Card One" };
+  const b = { ...art("11111111-0000-0000-0000-00000000000b", "Bob"), card: "Card Two" };
+  const m = { format: "modern", mode: "cross", card: "Card One vs Card Two",
+              cards: ["Card One", "Card Two"], total_arts: 2, arts: [a, b] };
+  for (let i = 0; i < 3; i++) await T.recordVote(m, a, b);
+  const s = T.localStats("all");
+  assert.equal(s.totals.votes, 3);
+  assert.equal(s.totals.cards, 2);
+  const mv = Object.fromEntries(s.most_voted.map(c => [c.card_name, c.votes]));
+  assert.equal(mv["Card One"], 3);
+  assert.equal(mv["Card Two"], 3);
+  assert.ok(s.blowouts[0].card_name.includes(" vs "),
+    "cross pairs should be labeled 'A vs B'");
+});
+
 test("localStats: format filter excludes other formats", async () => {
   const [a, b] = [art("a3"), art("b3")];
   await T.recordVote(matchup("Card M", a, b, "modern"), a, b);

@@ -27,6 +27,9 @@ create table if not exists votes (
 -- an alter here, before anything references it.
 alter table votes add column if not exists voter_hash text;
 alter table votes add column if not exists user_id uuid;
+-- cross-card duels: the loser art's card when it differs from card_name
+-- (null = classic same-card vote)
+alter table votes add column if not exists loser_card_name text;
 create index if not exists votes_card_idx on votes (card_name);
 create index if not exists votes_format_idx on votes (format);
 create index if not exists votes_voter_idx on votes (voter_hash, created_at);
@@ -67,8 +70,12 @@ as $$
   end
 $$;
 
+-- signature gained p_loser_card; drop the old overload for unambiguous RPC
+drop function if exists record_vote(text, text, jsonb, jsonb);
+
 create or replace function record_vote(
-  p_format text, p_card text, p_winner jsonb, p_loser jsonb
+  p_format text, p_card text, p_winner jsonb, p_loser jsonb,
+  p_loser_card text default null
 ) returns jsonb
 language plpgsql volatile security definer set search_path = public, extensions
 as $$
@@ -84,6 +91,11 @@ begin
   end if;
   if p_card is null or char_length(p_card) = 0 or char_length(p_card) > 200 then
     raise exception 'bad card name';
+  end if;
+  if p_loser_card is not null
+     and (char_length(p_loser_card) = 0 or char_length(p_loser_card) > 200
+          or p_loser_card = p_card) then
+    raise exception 'bad loser card name';
   end if;
   wid := (p_winner->>'id')::uuid;   -- casts also reject malformed ids
   lid := (p_loser->>'id')::uuid;
@@ -121,18 +133,20 @@ begin
 
   insert into votes (format, card_name, winner_id, loser_id,
                      winner_artist, winner_set, winner_art,
-                     loser_artist, loser_set, loser_art, voter_hash, user_id)
+                     loser_artist, loser_set, loser_art, voter_hash, user_id,
+                     loser_card_name)
   values (p_format, p_card, wid, lid,
           left(p_winner->>'artist', 120), left(p_winner->>'set_name', 120),
           left(p_winner->>'art', 300),
           left(p_loser->>'artist', 120), left(p_loser->>'set_name', 120),
-          left(p_loser->>'art', 300), vhash, auth.uid());
+          left(p_loser->>'art', 300), vhash, auth.uid(), p_loser_card);
 
   -- Elo update (metadata comes from the same validated payload as the vote)
   insert into arts (illustration_id, card_name, artist, set_name, art_url) values
     (wid, p_card, left(p_winner->>'artist', 120), left(p_winner->>'set_name', 120),
      left(p_winner->>'art', 300)),
-    (lid, p_card, left(p_loser->>'artist', 120), left(p_loser->>'set_name', 120),
+    (lid, coalesce(p_loser_card, p_card),
+     left(p_loser->>'artist', 120), left(p_loser->>'set_name', 120),
      left(p_loser->>'art', 300))
   on conflict (illustration_id) do nothing;
   select elo into w_elo from arts where illustration_id = wid;
@@ -141,11 +155,14 @@ begin
   update arts set wins = wins + 1, elo = elo + delta where illustration_id = wid;
   update arts set losses = losses + 1, elo = elo - delta where illustration_id = lid;
 
+  -- pairings are keyed by illustration ids alone (they are globally unique),
+  -- which lets same-card and cross-card votes share one ledger
   select count(*) into agree
-    from votes where card_name = p_card and winner_id = wid and loser_id = lid;
+    from votes where winner_id = wid and loser_id = lid;
   select count(*) into disagree
-    from votes where card_name = p_card and winner_id = lid and loser_id = wid;
-  select count(*) into card_total from votes where card_name = p_card;
+    from votes where winner_id = lid and loser_id = wid;
+  select count(*) into card_total
+    from votes where card_name = p_card or loser_card_name = p_card;
 
   return jsonb_build_object(
     'ok', true,
@@ -196,10 +213,11 @@ mg as (
   select case when n >= 200 then 5 when n >= 60 then 3 else 1 end m from totals
 ),
 sides as (
-  select winner_id id, card_name, winner_artist artist, winner_set set_name,
-         winner_art art, 1 w, 0 l from v
+  select id vid, winner_id id, card_name, winner_artist artist,
+         winner_set set_name, winner_art art, 1 w, 0 l from v
   union all
-  select loser_id, card_name, loser_artist, loser_set, loser_art, 0, 1 from v
+  select id, loser_id, coalesce(loser_card_name, card_name),
+         loser_artist, loser_set, loser_art, 0, 1 from v
 ),
 per_art as (
   select id, max(card_name) card_name, max(artist) artist,
@@ -215,15 +233,16 @@ ranked as (
   left join arts a on a.illustration_id = p.id
 ),
 pairs as (
-  select card_name,
-         least(winner_id, loser_id) a, greatest(winner_id, loser_id) b,
+  select least(winner_id, loser_id) a, greatest(winner_id, loser_id) b,
          count(*) filter (where winner_id <= loser_id)::int na,
          count(*) filter (where winner_id >  loser_id)::int nb,
          count(*)::int n
-  from v group by 1, 2, 3
+  from v group by 1, 2
 ),
 pair_rows as (
-  select p.card_name, p.n, p.na, p.nb,
+  select case when ja.card_name = jb.card_name then ja.card_name
+              else ja.card_name || ' vs ' || jb.card_name end card_name,
+         p.n, p.na, p.nb,
          round(100.0 * p.na / p.n)::int a_pct, round(100.0 * p.nb / p.n)::int b_pct,
          ja.artist a_artist, ja.set_name a_set, ja.art a_art,
          jb.artist b_artist, jb.set_name b_set, jb.art b_art
@@ -237,7 +256,7 @@ select jsonb_build_object(
   'min_games', (select m from mg),
   'totals', jsonb_build_object(
     'votes', (select n from totals),
-    'cards', (select count(distinct card_name) from v),
+    'cards', (select count(distinct card_name) from sides),
     'arts',  (select count(*) from per_art),
     'by_format', coalesce((select jsonb_object_agg(format, c)
                            from (select format, count(*)::int c from v group by format) f),
@@ -280,8 +299,8 @@ select jsonb_build_object(
           order by wilson_lb(sum(wins), sum(wins) + sum(losses)) desc
           limit 10) t), '[]'::jsonb),
   'most_voted', coalesce((select jsonb_agg(to_jsonb(t))
-    from (select card_name, count(*)::int votes
-          from v group by card_name
+    from (select card_name, count(distinct vid)::int votes
+          from sides group by card_name
           order by votes desc limit 10) t), '[]'::jsonb),
   -- How often the signed-in caller's picks match the community majority on
   -- the pairings they voted on (their own vote excluded). Null when anonymous.
@@ -292,17 +311,17 @@ select jsonb_build_object(
     from (
       select
         (select count(*) from votes o
-         where o.card_name = uv.card_name and o.winner_id = uv.winner_id
+         where o.winner_id = uv.winner_id
            and o.loser_id = uv.loser_id and o.id <> uv.id) w_n,
         (select count(*) from votes o
-         where o.card_name = uv.card_name and o.winner_id = uv.loser_id
+         where o.winner_id = uv.loser_id
            and o.loser_id = uv.winner_id) a_n
       from votes uv where uv.user_id = auth.uid()) t
   ) end)
 )
 $$;
 
-revoke all on function record_vote(text, text, jsonb, jsonb) from public;
+revoke all on function record_vote(text, text, jsonb, jsonb, text) from public;
 revoke all on function get_stats(text, boolean) from public;
-grant execute on function record_vote(text, text, jsonb, jsonb) to anon, authenticated;
+grant execute on function record_vote(text, text, jsonb, jsonb, text) to anon, authenticated;
 grant execute on function get_stats(text, boolean) to anon, authenticated;
