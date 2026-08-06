@@ -1,4 +1,4 @@
--- MTG Art Duel — Supabase schema.
+-- Council's Judgment (MTG art voting) — Supabase schema.
 -- Paste this whole file into your Supabase project's SQL editor and run it once.
 --
 -- Design: the anon key (published in config.js) can NOT touch the votes table

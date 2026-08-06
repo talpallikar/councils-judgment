@@ -37,7 +37,7 @@ def scryfall_popular(session, fmt, limit=75):
 def main():
     session = requests.Session()
     session.headers.update({
-        "User-Agent": "MTGArtDuel/1.0 (GitHub Pages hobby app)",
+        "User-Agent": "CouncilsJudgment/1.0 (MTG art voting; GitHub Pages hobby app)",
         "Accept": "application/json",
     })
 

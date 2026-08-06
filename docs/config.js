@@ -1,4 +1,4 @@
-// MTG Art Duel — deployment config.
+// Council's Judgment — deployment config.
 // Fill these in after creating your free Supabase project (see README).
 // The anon key is designed to be public: the database only accepts calls to
 // two validated functions (record_vote / get_stats), enforced by RLS.

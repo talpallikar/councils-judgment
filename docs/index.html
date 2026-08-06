@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MTG Art Duel</title>
+<title>Council's Judgment — MTG Art Duel</title>
 <style>
   :root {
     color-scheme: dark;
@@ -176,7 +176,7 @@
 <body>
 
 <header>
-  <div class="brand">Art Duel <small>MTG ART, HEAD TO HEAD</small></div>
+  <div class="brand">Council's Judgment <small>MTG ART, HEAD TO HEAD</small></div>
   <span id="fmt-pill" class="fmt-pill hidden"></span>
   <nav>
     <button id="nav-play" class="active">Play</button>
@@ -192,8 +192,9 @@
   <section id="view-home">
     <div class="hero">
       <h1>Which art wins?</h1>
-      <p>Two printings of the same Magic card, side by side. Pick the art you
-         prefer and see how everyone voted. Choose a format to start.</p>
+      <p><em>Will of the council</em> — two printings of the same Magic card,
+         side by side. Pick the art you prefer and see how the council voted.
+         Choose a format to start.</p>
       <div class="count" id="home-count"></div>
     </div>
     <div class="fmt-grid" id="fmt-grid"></div>
@@ -203,7 +204,7 @@
 
   <section id="view-stats" class="hidden">
     <div class="stats-head">
-      <h2 id="stats-title">Community rankings</h2>
+      <h2 id="stats-title">The council's rulings</h2>
       <div class="chips" id="stat-chips"></div>
     </div>
     <div id="stats-body" class="loading">Loading…</div>
@@ -682,7 +683,7 @@ const pairRow = e => `
   </div>`;
 
 async function loadStats() {
-  $("#stats-title").textContent = REMOTE ? "Community rankings" : "Your rankings (solo mode)";
+  $("#stats-title").textContent = REMOTE ? "The council's rulings" : "Your rulings (solo mode)";
   statChips();
   const body = $("#stats-body");
   body.className = "loading";
@@ -714,7 +715,7 @@ async function loadStats() {
     </div>
     <div class="panel">
       <h3>Closest rivalries</h3>
-      <div class="note">Pairings the voters can't agree on.</div>
+      <div class="note">Pairings the council can't agree on.</div>
       ${s.closest.length ? s.closest.map(pairRow).join("") : `<div class="empty">Not enough data yet.</div>`}
     </div>
     <div class="panel">

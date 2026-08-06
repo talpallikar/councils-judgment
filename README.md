@@ -1,8 +1,10 @@
-# MTG Art Duel
+# Council's Judgment
 
-A one-page web app: two arts of the same Magic card, side by side — pick the
-one you prefer. Votes are aggregated into community rankings (Wilson-scored
-art leaderboard, closest rivalries, biggest blowouts, top artists).
+*Will of the council* — a one-page web app: two arts of the same Magic card,
+side by side; pick the one you prefer. Votes are aggregated into community
+rankings (Wilson-scored art leaderboard, closest rivalries, biggest blowouts,
+top artists). Named after the card whose whole mechanic is everyone voting
+and the winner resolving.
 
 Hosted entirely on **GitHub Pages** (static frontend, Scryfall called directly
 from the browser) with **Supabase** (free tier) as the shared vote store and a
