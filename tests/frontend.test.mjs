@@ -213,15 +213,47 @@ test("localStats: cross-card votes count both cards and label pairs", async () =
   const b = { ...art("11111111-0000-0000-0000-00000000000b", "Bob"), card: "Card Two" };
   const m = { format: "modern", mode: "cross", card: "Card One vs Card Two",
               cards: ["Card One", "Card Two"], total_arts: 2, arts: [a, b] };
-  for (let i = 0; i < 3; i++) await T.recordVote(m, a, b);
+  const r = await T.recordVote(m, a, b);
+  assert.equal(r.cross, true);
+  assert.equal(r.card_votes, 1);
+  assert.equal(r.loser_card_votes, 1);
+  for (let i = 0; i < 2; i++) await T.recordVote(m, a, b);
   const s = T.localStats("all");
   assert.equal(s.totals.votes, 3);
   assert.equal(s.totals.cards, 2);
+  assert.equal(s.totals.cross_card_votes, 3);
+  assert.equal(s.totals.same_card_votes, 0);
   const mv = Object.fromEntries(s.most_voted.map(c => [c.card_name, c.votes]));
   assert.equal(mv["Card One"], 3);
   assert.equal(mv["Card Two"], 3);
   assert.ok(s.blowouts[0].card_name.includes(" vs "),
     "cross pairs should be labeled 'A vs B'");
+  assert.equal(s.blowouts[0].cross, true);
+});
+
+test("localStats: same-card votes report loser_card_votes null and cross false", async () => {
+  const [a, b] = [art("s1"), art("s2")];
+  const r = await T.recordVote(matchup("Same Card", a, b), a, b);
+  assert.equal(r.cross, false);
+  assert.equal(r.loser_card_votes, null);
+  const s = T.localStats("all");
+  assert.equal(s.totals.same_card_votes, 1);
+  assert.equal(s.totals.cross_card_votes, 0);
+});
+
+test("localStats: mixed same and cross votes split totals correctly", async () => {
+  const [a, b] = [art("mx1"), art("mx2")];
+  await T.recordVote(matchup("Card X", a, b), a, b);
+  const ca = { ...art("mx3"), card: "Card X" };
+  const cb = { ...art("mx4"), card: "Card Y" };
+  const cross = { format: "modern", mode: "cross", card: "Card X vs Card Y",
+                  cards: ["Card X", "Card Y"], total_arts: 2, arts: [ca, cb] };
+  await T.recordVote(cross, ca, cb);
+  await T.recordVote(cross, ca, cb);
+  const s = T.localStats("all");
+  assert.equal(s.totals.votes, 3);
+  assert.equal(s.totals.same_card_votes, 1);
+  assert.equal(s.totals.cross_card_votes, 2);
 });
 
 test("localStats: format filter excludes other formats", async () => {

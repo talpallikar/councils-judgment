@@ -170,7 +170,14 @@ begin
       'with_you', agree,
       'against_you', disagree,
       'agree_pct', round(100.0 * agree / (agree + disagree))),
-    'card_votes', card_total);
+    'card_votes', card_total,
+    -- cross-card mode: return the loser card's total too so the UI can
+    -- credit both cards. null for same-card votes.
+    'loser_card_votes', case when p_loser_card is null then null else
+      (select count(*) from votes
+       where card_name = p_loser_card or loser_card_name = p_loser_card)
+    end,
+    'cross', p_loser_card is not null);
 end
 $$;
 
@@ -242,6 +249,7 @@ pairs as (
 pair_rows as (
   select case when ja.card_name = jb.card_name then ja.card_name
               else ja.card_name || ' vs ' || jb.card_name end card_name,
+         (ja.card_name is distinct from jb.card_name) is_cross,
          p.n, p.na, p.nb,
          round(100.0 * p.na / p.n)::int a_pct, round(100.0 * p.nb / p.n)::int b_pct,
          ja.artist a_artist, ja.set_name a_set, ja.art a_art,
@@ -260,7 +268,9 @@ select jsonb_build_object(
     'arts',  (select count(*) from per_art),
     'by_format', coalesce((select jsonb_object_agg(format, c)
                            from (select format, count(*)::int c from v group by format) f),
-                          '{}'::jsonb)),
+                          '{}'::jsonb),
+    'same_card_votes', (select count(*)::int from v where loser_card_name is null),
+    'cross_card_votes', (select count(*)::int from v where loser_card_name is not null)),
   'top_arts', coalesce((select jsonb_agg(to_jsonb(t))
     from (select id, card_name, artist, set_name, art, wins, losses, games,
                  win_rate, elo
@@ -269,7 +279,7 @@ select jsonb_build_object(
           order by wilson_lb(wins, games) desc, games desc
           limit 12) t), '[]'::jsonb),
   'closest', coalesce((select jsonb_agg(jsonb_build_object(
-      'card_name', card_name, 'n', n,
+      'card_name', card_name, 'n', n, 'cross', is_cross,
       'a', jsonb_build_object('artist', a_artist, 'set_name', a_set, 'art', a_art,
                               'votes', na, 'pct', a_pct),
       'b', jsonb_build_object('artist', b_artist, 'set_name', b_set, 'art', b_art,
@@ -278,7 +288,7 @@ select jsonb_build_object(
           order by abs(na::float8 / n - 0.5) asc, n desc
           limit 8) c), '[]'::jsonb),
   'blowouts', coalesce((select jsonb_agg(jsonb_build_object(
-      'card_name', card_name, 'n', n,
+      'card_name', card_name, 'n', n, 'cross', is_cross,
       'a', jsonb_build_object('artist', a_artist, 'set_name', a_set, 'art', a_art,
                               'votes', na, 'pct', a_pct),
       'b', jsonb_build_object('artist', b_artist, 'set_name', b_set, 'art', b_art,

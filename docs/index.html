@@ -215,6 +215,12 @@
   .pairbar .pb { background: var(--orange); border-radius: 0 4px 4px 0; }
   .versus { display: flex; gap: 6px; flex: none; }
   .empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
+  .tag {
+    display: inline-block; font-size: 10.5px; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--muted);
+    border: 1px solid var(--grid); border-radius: 999px;
+    padding: 1px 7px; margin-left: 6px; vertical-align: 1px;
+  }
 
   /* ---------- modal ---------- */
   .modal {
@@ -530,11 +536,14 @@ async function recordVote(m, winner, loser) {
   localStorage.setItem("mtgart.votes", JSON.stringify(votes));
   const agree = votes.filter(v => v.w.id === w.id && v.l.id === l.id).length;
   const disagree = votes.filter(v => v.w.id === l.id && v.l.id === w.id).length;
+  const votesFor = card => votes.filter(v => v.c === card || v.lc === card).length;
   return {
     ok: true,
     pair: { with_you: agree, against_you: disagree,
             agree_pct: Math.round(100 * agree / (agree + disagree)) },
-    card_votes: votes.filter(v => v.c === wCard || v.lc === wCard).length,
+    card_votes: votesFor(wCard),
+    loser_card_votes: lCard ? votesFor(lCard) : null,
+    cross: Boolean(lCard),
   };
 }
 
@@ -556,6 +565,7 @@ function localStats(fmt) {
   const total = votes.length;
   const minGames = total >= 200 ? 5 : total >= 60 ? 3 : 1;
   const perArt = new Map(), perCard = new Map(), pairs = new Map(), byFormat = {};
+  let sameCard = 0, crossCard = 0;
   const touch = (side, isWin) => {
     const e = perArt.get(side.id) ||
       { id: side.id, card_name: null, artist: side.artist, set_name: side.set_name,
@@ -569,7 +579,8 @@ function localStats(fmt) {
     touch(v.w, true).card_name = v.c;
     touch(v.l, false).card_name = lCard;
     perCard.set(v.c, (perCard.get(v.c) || 0) + 1);
-    if (lCard !== v.c) perCard.set(lCard, (perCard.get(lCard) || 0) + 1);
+    if (lCard !== v.c) { perCard.set(lCard, (perCard.get(lCard) || 0) + 1); crossCard++; }
+    else sameCard++;
     byFormat[v.f] = (byFormat[v.f] || 0) + 1;
     const [a, b] = [v.w.id, v.l.id].sort();
     const key = a + "|" + b;
@@ -592,6 +603,7 @@ function localStats(fmt) {
       return {
         card_name: ma.card_name === mb.card_name
           ? ma.card_name : ma.card_name + " vs " + mb.card_name,
+        cross: ma.card_name !== mb.card_name,
         n: p.n,
         a: { artist: ma.artist, set_name: ma.set_name, art: ma.art,
              votes: p.na, pct: Math.round(100 * p.na / p.n) },
@@ -610,7 +622,9 @@ function localStats(fmt) {
   return {
     format: fmt,
     min_games: minGames,
-    totals: { votes: total, cards: perCard.size, arts: perArt.size, by_format: byFormat },
+    totals: { votes: total, cards: perCard.size, arts: perArt.size,
+              by_format: byFormat,
+              same_card_votes: sameCard, cross_card_votes: crossCard },
     top_arts: ranked.filter(e => e.games >= minGames)
       .sort((x, y) => y.score - x.score || y.games - x.games).slice(0, 12),
     closest: [...pairRows]
@@ -1092,9 +1106,12 @@ async function castVote(i) {
       }
     }
     const n = res.pair.with_you + res.pair.against_you;
+    const cardsNote = res.cross && res.loser_card_votes != null
+      ? `${res.card_votes} on ${esc(winner.card)} &middot; ${res.loser_card_votes} on ${esc(loser.card)}`
+      : `${res.card_votes} total votes on ${esc(m.mode === "cross" ? winner.card : m.card)}`;
     $("#agree-note").innerHTML = (n > 1
       ? `<b>${res.pair.agree_pct}%</b> of ${n} votes on this pairing agree with you
-         &middot; ${res.card_votes} total votes on ${esc(m.mode === "cross" ? winner.card : m.card)}`
+         &middot; ${cardsNote}`
       : `You're the first to vote on this pairing.`) + streakNote;
   }
   const next = document.createElement("button");
@@ -1176,7 +1193,8 @@ const pairRow = e => `
       <img class="thumb" src="${esc(e.b.art)}" alt="" loading="lazy">
     </div>
     <div class="info">
-      <div class="title">${esc(e.card_name)}</div>
+      <div class="title">${esc(e.card_name)}${
+        e.cross ? ` <span class="tag">two cards</span>` : ""}</div>
       <div class="subtitle">${esc(e.a.artist || "?")} vs ${esc(e.b.artist || "?")}</div>
     </div>
     <div class="metric">
@@ -1232,12 +1250,16 @@ async function loadStats() {
     ? `<div class="kpi"><div class="v">${streak.current}</div>
        <div class="k">streak &middot; best ${streak.best}</div></div>`
     : "";
+  const crossTile = t.cross_card_votes
+    ? `<div class="kpi"><div class="v">${t.cross_card_votes.toLocaleString()}</div>
+       <div class="k">two-card duels &middot; ${t.same_card_votes.toLocaleString()} same-card</div></div>`
+    : "";
   body.innerHTML = `
     <div class="kpis">
       <div class="kpi"><div class="v">${t.votes.toLocaleString()}</div><div class="k">votes cast</div></div>
       <div class="kpi"><div class="v">${t.cards.toLocaleString()}</div><div class="k">cards contested</div></div>
       <div class="kpi"><div class="v">${t.arts.toLocaleString()}</div><div class="k">arts ranked</div></div>
-      ${alignTile}${streakTile}
+      ${crossTile}${alignTile}${streakTile}
     </div>
     <div class="panel">
       <h3>Top-ranked arts</h3>
