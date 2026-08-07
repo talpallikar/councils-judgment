@@ -26,7 +26,10 @@ global.localStorage = {
   setItem(k, v) { this._m[k] = String(v); },
   removeItem(k) { delete this._m[k]; },
 };
-global.window = { MTGART_CONFIG: { supabaseUrl: "", supabaseAnonKey: "" } };
+global.window = { MTGART_CONFIG: { supabaseUrl: "", supabaseAnonKey: "" },
+                  addEventListener() {} };
+global.location = { hash: "", pathname: "/", search: "" };
+global.history = { replaceState() {}, pushState() {} };
 global.Image = class { set src(v) {} };
 global.requestAnimationFrame = f => f();
 
@@ -56,7 +59,7 @@ let T;
 before(async () => {
   const html = readFileSync(join(HERE, "..", "docs", "index.html"), "utf8");
   let src = html.match(/<script>([\s\S]*?)<\/script>/)[1].replace('"use strict";', "");
-  src += "\nglobalThis.__T = { state, extractArt, wilson, newMatchup, recordVote, localStats, getPrints, bumpStreak };";
+  src += "\nglobalThis.__T = { state, extractArt, wilson, newMatchup, recordVote, localStats, localCard, localArtist, getPrints, bumpStreak };";
   (0, eval)(src);
   T = globalThis.__T;
   // Boot's loadHome chain includes a Scryfall rate-limit sleep of up to
@@ -263,6 +266,54 @@ test("localStats: format filter excludes other formats", async () => {
   const s = T.localStats("legacy");
   assert.equal(s.totals.votes, 1);
   assert.deepEqual(s.totals.by_format, { legacy: 1 });
+});
+
+test("localCard: aggregates arts and head-to-head for one card only", async () => {
+  const [a, b, c] = [art("cx1", "Alice"), art("cx2", "Bob"), art("cx3", "Cara")];
+  const foo = matchup("Foo", a, b);
+  const bar = matchup("Bar", c, c);       // won't happen — sanity
+  await T.recordVote(foo, a, b);
+  await T.recordVote(foo, a, b);
+  await T.recordVote(foo, b, a);
+  await T.recordVote(matchup("Baz", a, c), a, c);   // different card, ignored
+  const s = T.localCard("Foo");
+  assert.equal(s.card_name, "Foo");
+  assert.equal(s.totals.votes, 3);
+  assert.equal(s.totals.arts, 2);
+  assert.equal(s.arts[0].id, "cx1");        // 2-1 beats 1-2
+  assert.equal(s.arts[0].wins, 2);
+  assert.equal(s.pairs.length, 1);
+  assert.equal(s.pairs[0].n, 3);
+});
+
+test("localCard: cross-card votes contribute to both cards' totals", async () => {
+  const wa = { ...art("cc1", "Alice"), card: "Alpha" };
+  const wb = { ...art("cc2", "Bob"), card: "Beta" };
+  const m = { format: "modern", mode: "cross", card: "Alpha vs Beta",
+              cards: ["Alpha", "Beta"], total_arts: 2, arts: [wa, wb] };
+  await T.recordVote(m, wa, wb);
+  const alpha = T.localCard("Alpha"), beta = T.localCard("Beta");
+  assert.equal(alpha.totals.cross_card_votes, 1);
+  assert.equal(beta.totals.cross_card_votes, 1);
+  assert.equal(alpha.pairs.length, 0, "cross-card duels don't count as head-to-head");
+  assert.equal(alpha.arts.find(x => x.id === "cc1").wins, 1);
+  assert.equal(beta.arts.find(x => x.id === "cc2").losses, 1);
+});
+
+test("localArtist: ranks their arts and sums a career record", async () => {
+  const alice1 = art("a1", "Alice"), alice2 = art("a2", "Alice");
+  const bob = art("bb", "Bob");
+  await T.recordVote(matchup("One", alice1, bob), alice1, bob);
+  await T.recordVote(matchup("One", alice1, bob), alice1, bob);
+  await T.recordVote(matchup("Two", alice2, bob), bob, alice2);   // Alice loses
+  const s = T.localArtist("Alice");
+  assert.equal(s.artist, "Alice");
+  assert.equal(s.totals.arts, 2);
+  assert.equal(s.totals.wins, 2);
+  assert.equal(s.totals.losses, 1);
+  assert.equal(s.totals.win_rate, 67);
+  assert.equal(s.arts[0].id, "a1");   // 2-0 outranks 0-1
+  assert.equal(s.arts[0].card_name, "One");
 });
 
 test("localStats: blowouts need >=65% and closest prefers even splits", async () => {

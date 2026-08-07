@@ -358,7 +358,118 @@ select jsonb_build_object(
 )
 $$;
 
+-- Per-card page: every art of the named card, ranked, plus the head-to-head
+-- pairings between them (same-card duels only).
+create or replace function get_card(p_name text)
+returns jsonb
+language sql stable security definer set search_path = public
+as $$
+with v as (
+  select * from votes
+  where card_name = p_name or loser_card_name = p_name
+),
+-- one side row per (vote, art) filtered to this card
+sides as (
+  select id vid, winner_id id, winner_artist artist, winner_set set_name,
+         winner_art art, 1 w, 0 l from v where card_name = p_name
+  union all
+  select id, loser_id, loser_artist, loser_set, loser_art, 0, 1 from v
+   where coalesce(loser_card_name, card_name) = p_name
+),
+per_art as (
+  select id, max(artist) artist, max(set_name) set_name, max(art) art,
+         sum(w)::int wins, sum(l)::int losses, count(*)::int games
+  from sides group by id
+),
+ranked as (
+  select p.*, round(100.0 * p.wins / p.games)::int win_rate,
+         wilson_lb(p.wins, p.games) score,
+         round(coalesce(a.elo, 1500))::int elo
+  from per_art p
+  left join arts a on a.illustration_id = p.id
+),
+-- head-to-head only makes sense for same-card duels
+h2h as (
+  select least(winner_id, loser_id) a, greatest(winner_id, loser_id) b,
+         count(*) filter (where winner_id <= loser_id)::int na,
+         count(*) filter (where winner_id >  loser_id)::int nb,
+         count(*)::int n
+  from v where card_name = p_name and loser_card_name is null
+  group by 1, 2
+)
+select jsonb_build_object(
+  'card_name', p_name,
+  'totals', jsonb_build_object(
+    'votes', (select count(*)::int from v),
+    'arts', (select count(*) from per_art),
+    'same_card_votes', (select count(*)::int from v where loser_card_name is null),
+    'cross_card_votes', (select count(*)::int from v where loser_card_name is not null)),
+  'arts', coalesce((select jsonb_agg(to_jsonb(t)) from (
+    select id, artist, set_name, art, wins, losses, games, win_rate, elo
+    from ranked
+    order by score desc nulls last, games desc) t), '[]'::jsonb),
+  'pairs', coalesce((select jsonb_agg(x) from (
+    select jsonb_build_object(
+      'n', p.n,
+      'a', jsonb_build_object('id', p.a, 'artist', pa.artist, 'set_name', pa.set_name,
+                              'art', pa.art, 'votes', p.na,
+                              'pct', round(100.0 * p.na / p.n)::int),
+      'b', jsonb_build_object('id', p.b, 'artist', pb.artist, 'set_name', pb.set_name,
+                              'art', pb.art, 'votes', p.nb,
+                              'pct', round(100.0 * p.nb / p.n)::int)) x
+    from h2h p
+    left join per_art pa on pa.id = p.a
+    left join per_art pb on pb.id = p.b
+    order by p.n desc) sub), '[]'::jsonb))
+$$;
+
+-- Per-artist page: every art they made that has appeared in a duel, ranked,
+-- plus career wins/losses.
+create or replace function get_artist(p_name text)
+returns jsonb
+language sql stable security definer set search_path = public
+as $$
+with sides as (
+  select id vid, winner_id id, card_name, winner_artist artist,
+         winner_set set_name, winner_art art, 1 w, 0 l from votes
+  union all
+  select id, loser_id, coalesce(loser_card_name, card_name),
+         loser_artist, loser_set, loser_art, 0, 1 from votes
+),
+mine as (select * from sides where artist = p_name),
+per_art as (
+  select id, max(card_name) card_name, max(set_name) set_name, max(art) art,
+         sum(w)::int wins, sum(l)::int losses, count(*)::int games
+  from mine group by id
+),
+ranked as (
+  select p.*, round(100.0 * p.wins / p.games)::int win_rate,
+         wilson_lb(p.wins, p.games) score,
+         round(coalesce(a.elo, 1500))::int elo
+  from per_art p
+  left join arts a on a.illustration_id = p.id
+),
+tot as (select coalesce(sum(wins),0)::int w, coalesce(sum(losses),0)::int l from per_art)
+select jsonb_build_object(
+  'artist', p_name,
+  'totals', jsonb_build_object(
+    'arts', (select count(*) from per_art),
+    'wins', (select w from tot),
+    'losses', (select l from tot),
+    'games', (select w + l from tot),
+    'win_rate', (select case when w + l = 0 then 0
+                        else round(100.0 * w / (w + l))::int end from tot)),
+  'arts', coalesce((select jsonb_agg(to_jsonb(t)) from (
+    select id, card_name, set_name, art, wins, losses, games, win_rate, elo
+    from ranked
+    order by score desc nulls last, games desc) t), '[]'::jsonb))
+$$;
+
 revoke all on function record_vote(text, text, jsonb, jsonb, text) from public;
 revoke all on function get_stats(text, boolean) from public;
+revoke all on function get_card(text) from public;
+revoke all on function get_artist(text) from public;
 grant execute on function record_vote(text, text, jsonb, jsonb, text) to anon, authenticated;
 grant execute on function get_stats(text, boolean) to anon, authenticated;
+grant execute on function get_card(text) to anon, authenticated;
+grant execute on function get_artist(text) to anon, authenticated;

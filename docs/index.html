@@ -221,6 +221,33 @@
     border: 1px solid var(--grid); border-radius: 999px;
     padding: 1px 7px; margin-left: 6px; vertical-align: 1px;
   }
+  a.deep { color: inherit; border-bottom: 1px dotted var(--grid); }
+  a.deep:hover { color: var(--gold); border-bottom-color: var(--gold); }
+  .back { color: var(--muted); font-size: 13px; text-decoration: none; display: inline-block; margin-bottom: 12px; }
+  .back:hover { color: var(--ink-2); }
+  .page-head { margin-bottom: 22px; }
+  .page-head h2 { font-family: var(--serif); font-size: 30px; font-weight: 500; }
+  .page-head .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .art-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .art-card {
+    background: var(--surface); border: 1px solid var(--hair); border-radius: 12px;
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+  .art-card img { width: 100%; display: block; }
+  .art-card .body { padding: 10px 12px 12px; font-size: 13px; }
+  .art-card .body .who { color: var(--ink-2); }
+  .art-card .body .who .set { color: var(--muted); }
+  .art-card .body .stats {
+    color: var(--muted); font-size: 12px; margin-top: 6px;
+    display: flex; justify-content: space-between; font-variant-numeric: tabular-nums;
+  }
+  .art-card .rank-badge {
+    position: relative; top: -1px; margin-right: 6px; color: var(--gold);
+    font-family: var(--serif); font-size: 14px;
+  }
 
   /* ---------- modal ---------- */
   .modal {
@@ -297,6 +324,9 @@
   </section>
 
   <section id="view-duel" class="hidden"></section>
+
+  <section id="view-card" class="hidden"></section>
+  <section id="view-artist" class="hidden"></section>
 
   <section id="view-stats" class="hidden">
     <div class="stats-head">
@@ -661,13 +691,104 @@ const getStats = fmt => REMOTE
   ? rpc("get_stats", { fmt, p_mine: state.statScope === "mine" })
   : Promise.resolve(localStats(fmt));
 
+function localCard(name) {
+  const eloMap = localElo();
+  const votes = localVotes().filter(v =>
+    v.c === name || (v.lc || v.c) === name);
+  const perArt = new Map();
+  const touch = (side, isWin) => {
+    const e = perArt.get(side.id) ||
+      { id: side.id, artist: side.artist, set_name: side.set_name,
+        art: side.art, wins: 0, losses: 0 };
+    if (isWin) e.wins++; else e.losses++;
+    perArt.set(side.id, e);
+    return e;
+  };
+  let same = 0, cross = 0;
+  const pairs = new Map();
+  for (const v of votes) {
+    if (v.c === name) touch(v.w, true);
+    if ((v.lc || v.c) === name) touch(v.l, false);
+    if (v.lc) cross++; else {
+      same++;
+      const [a, b] = [v.w.id, v.l.id].sort();
+      const key = a + "|" + b;
+      const p = pairs.get(key) || { a, b, na: 0, nb: 0 };
+      if (v.w.id === a) p.na++; else p.nb++;
+      pairs.set(key, p);
+    }
+  }
+  const ranked = [...perArt.values()].map(e => ({
+    ...e, games: e.wins + e.losses,
+    win_rate: e.wins + e.losses ? Math.round(100 * e.wins / (e.wins + e.losses)) : 0,
+    score: wilson(e.wins, e.wins + e.losses),
+    elo: Math.round(eloMap.get(e.id) ?? 1500),
+  })).sort((x, y) => y.score - x.score || y.games - x.games);
+  const pairList = [...pairs.values()]
+    .map(p => ({ ...p, n: p.na + p.nb }))
+    .sort((x, y) => y.n - x.n)
+    .map(p => {
+      const pa = perArt.get(p.a) || {}, pb = perArt.get(p.b) || {};
+      return {
+        n: p.n,
+        a: { id: p.a, artist: pa.artist, set_name: pa.set_name, art: pa.art,
+             votes: p.na, pct: Math.round(100 * p.na / p.n) },
+        b: { id: p.b, artist: pb.artist, set_name: pb.set_name, art: pb.art,
+             votes: p.nb, pct: Math.round(100 * p.nb / p.n) },
+      };
+    });
+  return {
+    card_name: name,
+    totals: { votes: votes.length, arts: perArt.size,
+              same_card_votes: same, cross_card_votes: cross },
+    arts: ranked, pairs: pairList,
+  };
+}
+
+function localArtist(name) {
+  const eloMap = localElo();
+  const perArt = new Map();
+  const touch = (side, cardName, isWin) => {
+    if (side.artist !== name) return;
+    const e = perArt.get(side.id) ||
+      { id: side.id, card_name: cardName, set_name: side.set_name,
+        art: side.art, wins: 0, losses: 0 };
+    if (isWin) e.wins++; else e.losses++;
+    e.card_name = cardName;
+    perArt.set(side.id, e);
+  };
+  for (const v of localVotes()) {
+    touch(v.w, v.c, true);
+    touch(v.l, v.lc || v.c, false);
+  }
+  const ranked = [...perArt.values()].map(e => ({
+    ...e, games: e.wins + e.losses,
+    win_rate: e.wins + e.losses ? Math.round(100 * e.wins / (e.wins + e.losses)) : 0,
+    score: wilson(e.wins, e.wins + e.losses),
+    elo: Math.round(eloMap.get(e.id) ?? 1500),
+  })).sort((x, y) => y.score - x.score || y.games - x.games);
+  const wins = ranked.reduce((s, e) => s + e.wins, 0);
+  const losses = ranked.reduce((s, e) => s + e.losses, 0);
+  return {
+    artist: name,
+    totals: { arts: ranked.length, wins, losses, games: wins + losses,
+              win_rate: wins + losses ? Math.round(100 * wins / (wins + losses)) : 0 },
+    arts: ranked,
+  };
+}
+
+const getCard = name => REMOTE
+  ? rpc("get_card", { p_name: name }) : Promise.resolve(localCard(name));
+const getArtist = name => REMOTE
+  ? rpc("get_artist", { p_name: name }) : Promise.resolve(localArtist(name));
+
 /* ================= view switching ================= */
 
 function show(view) {
   state.view = view;
-  for (const v of ["home", "duel", "stats"])
+  for (const v of ["home", "duel", "stats", "card", "artist"])
     $("#view-" + v).classList.toggle("hidden", v !== view);
-  $("#nav-play").classList.toggle("active", view !== "stats");
+  $("#nav-play").classList.toggle("active", view === "duel" || view === "home");
   $("#nav-stats").classList.toggle("active", view === "stats");
   const pill = $("#fmt-pill");
   const label = poolLabel(state.format);
@@ -789,8 +910,11 @@ async function getSetPool(code) {
   return names;
 }
 
-$("#nav-play").onclick = () => state.format ? startDuel() : show("home");
-$("#nav-stats").onclick = () => { show("stats"); loadStats(); };
+// nav clicks clear any deep-link hash so a refresh doesn't bounce back into
+// the card/artist page the user just left
+const clearHash = () => history.replaceState(null, "", location.pathname + location.search);
+$("#nav-play").onclick = () => { clearHash(); state.format ? startDuel() : show("home"); };
+$("#nav-stats").onclick = () => { clearHash(); show("stats"); loadStats(); };
 
 /* ================= home ================= */
 
@@ -1172,13 +1296,19 @@ function statChips() {
   }
 }
 
+const cardLink = name =>
+  `<a class="deep" href="#card/${encodeURIComponent(name)}">${esc(name)}</a>`;
+const artistLink = name =>
+  name ? `<a class="deep" href="#artist/${encodeURIComponent(name)}">${esc(name)}</a>` : "";
+
 const artRow = (e, i) => `
   <div class="row">
     <span class="rank">${i + 1}</span>
     <img class="thumb" src="${esc(e.art)}" alt="" loading="lazy">
     <div class="info">
-      <div class="title">${esc(e.card_name)}</div>
-      <div class="subtitle">${esc(e.artist || "")} &middot; ${esc(e.set_name || "")}</div>
+      <div class="title">${cardLink(e.card_name)}</div>
+      <div class="subtitle">${artistLink(e.artist)}${
+        e.artist && e.set_name ? " &middot; " : ""}${esc(e.set_name || "")}</div>
     </div>
     <div class="metric">
       <div class="lbl"><span>${e.win_rate}% wins</span><span>${e.wins}&ndash;${e.losses} &middot; Elo ${e.elo}</span></div>
@@ -1193,9 +1323,10 @@ const pairRow = e => `
       <img class="thumb" src="${esc(e.b.art)}" alt="" loading="lazy">
     </div>
     <div class="info">
-      <div class="title">${esc(e.card_name)}${
+      <div class="title">${e.cross ? esc(e.card_name) : cardLink(e.card_name)}${
         e.cross ? ` <span class="tag">two cards</span>` : ""}</div>
-      <div class="subtitle">${esc(e.a.artist || "?")} vs ${esc(e.b.artist || "?")}</div>
+      <div class="subtitle">${e.a.artist ? artistLink(e.a.artist) : "?"} vs ${
+        e.b.artist ? artistLink(e.b.artist) : "?"}</div>
     </div>
     <div class="metric">
       <div class="lbl"><span>${e.a.pct}% / ${e.b.pct}%</span><span>${e.n} votes</span></div>
@@ -1283,7 +1414,7 @@ async function loadStats() {
         <div class="row">
           <span class="rank">${i + 1}</span>
           <div class="info">
-            <div class="title">${esc(a.artist)}</div>
+            <div class="title">${artistLink(a.artist)}</div>
             <div class="subtitle">${a.arts} art${a.arts > 1 ? "s" : ""} in play</div>
           </div>
           <div class="metric">
@@ -1297,7 +1428,7 @@ async function loadStats() {
       ${s.most_voted.map((c, i) => `
         <div class="row">
           <span class="rank">${i + 1}</span>
-          <div class="info"><div class="title">${esc(c.card_name)}</div></div>
+          <div class="info"><div class="title">${cardLink(c.card_name)}</div></div>
           <div class="metric">
             <div class="lbl"><span>${c.votes} vote${c.votes > 1 ? "s" : ""}</span><span></span></div>
             <div class="bar"><i style="width:${Math.round(100 * c.votes / s.most_voted[0].votes)}%"></i></div>
@@ -1305,6 +1436,104 @@ async function loadStats() {
         </div>`).join("")}
     </div>`;
 }
+
+/* ================= card & artist pages ================= */
+
+const artTile = (headHtml, e, i) => `
+  <div class="art-card">
+    <img src="${esc(e.art)}" alt="" loading="lazy">
+    <div class="body">
+      <div class="who">
+        <span class="rank-badge">#${i + 1}</span>${headHtml}
+        <span class="set"> &middot; ${esc(e.set_name || "")}</span>
+      </div>
+      <div class="stats">
+        <span>${e.wins}&ndash;${e.losses} &middot; ${e.win_rate}%</span>
+        <span>Elo ${e.elo}</span>
+      </div>
+    </div>
+  </div>`;
+
+async function loadCard(name) {
+  show("card");
+  const root = $("#view-card");
+  root.innerHTML = `<div class="loading">Loading&hellip;</div>`;
+  let s;
+  try { s = await getCard(name); }
+  catch (e) { root.innerHTML = `<div class="loading">Could not load (${esc(e.message)}).</div>`; return; }
+  const t = s.totals;
+  if (!t.votes) {
+    root.innerHTML = `
+      <a class="back" href="#stats">&larr; Back to stats</a>
+      <div class="page-head"><h2>${esc(name)}</h2>
+        <div class="sub">No votes on this card yet.</div></div>`;
+    return;
+  }
+  const crossNote = t.cross_card_votes
+    ? ` &middot; ${t.cross_card_votes} in two-card duels` : "";
+  root.innerHTML = `
+    <a class="back" href="#stats">&larr; Back to stats</a>
+    <div class="page-head">
+      <h2>${esc(name)}</h2>
+      <div class="sub">${t.arts} art${t.arts > 1 ? "s" : ""} &middot;
+        ${t.votes} vote${t.votes > 1 ? "s" : ""}${crossNote}</div>
+    </div>
+    <div class="panel">
+      <h3>Arts, ranked</h3>
+      <div class="note">Ordered by Wilson score.</div>
+      <div class="art-grid">${s.arts.map((e, i) =>
+        artTile(artistLink(e.artist) || esc(e.artist || "Unknown"), e, i)).join("")}</div>
+    </div>
+    ${s.pairs.length ? `<div class="panel">
+      <h3>Head-to-head</h3>
+      <div class="note">Same-card duels only.</div>
+      ${s.pairs.map(p => pairRow({
+        card_name: name, cross: false, n: p.n, a: p.a, b: p.b })).join("")}
+    </div>` : ""}`;
+}
+
+async function loadArtist(name) {
+  show("artist");
+  const root = $("#view-artist");
+  root.innerHTML = `<div class="loading">Loading&hellip;</div>`;
+  let s;
+  try { s = await getArtist(name); }
+  catch (e) { root.innerHTML = `<div class="loading">Could not load (${esc(e.message)}).</div>`; return; }
+  const t = s.totals;
+  if (!t.arts) {
+    root.innerHTML = `
+      <a class="back" href="#stats">&larr; Back to stats</a>
+      <div class="page-head"><h2>${esc(name)}</h2>
+        <div class="sub">No duels involving this artist yet.</div></div>`;
+    return;
+  }
+  root.innerHTML = `
+    <a class="back" href="#stats">&larr; Back to stats</a>
+    <div class="page-head">
+      <h2>${esc(name)}</h2>
+      <div class="sub">${t.arts} art${t.arts > 1 ? "s" : ""} in play &middot;
+        ${t.wins}&ndash;${t.losses} &middot; ${t.win_rate}% wins</div>
+    </div>
+    <div class="panel">
+      <h3>Arts, ranked</h3>
+      <div class="note">Ordered by Wilson score. Card names link back.</div>
+      <div class="art-grid">${s.arts.map((e, i) =>
+        artTile(cardLink(e.card_name), e, i)).join("")}</div>
+    </div>`;
+}
+
+/* ================= routing ================= */
+
+// Hash-based deep links so a card or artist page is shareable via URL.
+// #card/<name> and #artist/<name>; anything else = normal app flow.
+function router() {
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (h.startsWith("card/")) return loadCard(h.slice(5));
+  if (h.startsWith("artist/")) return loadArtist(h.slice(7));
+  if (h === "stats") { show("stats"); loadStats(); return; }
+  // no deep link: leave the current view alone
+}
+window.addEventListener("hashchange", router);
 
 /* ================= keyboard ================= */
 
@@ -1320,7 +1549,10 @@ document.addEventListener("keydown", ev => {
 
 loadHome().then(() => {
   initAuth();
-  if (state.format && poolLabel(state.format)) startDuel();
+  if (location.hash.startsWith("#card/") ||
+      location.hash.startsWith("#artist/") ||
+      location.hash === "#stats") router();
+  else if (state.format && poolLabel(state.format)) startDuel();
   else show("home");
 }).catch(e => {
   $("#home-count").textContent = "Failed to load: " + e.message;
